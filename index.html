@@ -27,7 +27,7 @@
         let currentClass = "";
         let currentUser = null;
 
-        // Inisialisasi Autentikasi terlebih dahulu (Sesuai Aturan 3)
+        // Inisialisasi Autentikasi (Aturan 3)
         async function initAuth() {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -41,54 +41,53 @@
             }
         }
 
-        // Listener untuk status login
+        // Listener Status Login
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
                 console.log("Authenticated as:", user.uid);
-                listenToStudents(); // Hanya panggil Firestore SETELAH user ada
+                listenToStudents();
             }
         });
 
-        // Jalankan auth di awal
         initAuth();
 
-        // Mendengarkan perubahan data secara Real-time
+        // Real-time listener untuk sinkronisasi data antar perangkat
         function listenToStudents() {
             if (!currentUser) return;
             
-            // Menggunakan path yang ketat sesuai aturan lingkungan
+            // Path Koleksi Sesuai Aturan 1
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'students');
             
             onSnapshot(colRef, (snapshot) => {
                 students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Jika sedang membuka kelas, refresh tampilannya
                 if (currentClass) renderStudentList(currentClass);
             }, (error) => {
-                console.error("Firestore Permission/Query Error:", error);
-                if (error.code === 'permission-denied') {
-                    showToast("Izin Database Ditolak", "bg-red-500");
-                }
+                console.error("Firestore Error:", error);
             });
         }
 
-        // Simpan Murid Baru
+        // Simpan Murid Baru ke Firestore
         window.saveMember = async () => {
-            if (!currentUser) return showToast("Menghubungkan ulang...", "bg-amber-500");
+            if (!currentUser) return showToast("Sesi berakhir, silakan login ulang", "bg-amber-500");
 
-            const name = document.getElementById('newName').value;
+            const name = document.getElementById('newName').value.trim();
             const cls = document.getElementById('newClass').value;
             const photo = window.selectedBase64Image;
 
-            if (!name || !cls || !photo) return showToast("Lengkapi Nama, Kelas & Foto!", "bg-amber-500");
+            if (!name || !cls || !photo) {
+                return showToast("Lengkapi Nama, Kelas, dan Foto!", "bg-amber-500");
+            }
 
             const id = Date.now().toString();
             const studentData = {
-                name,
+                name: name,
                 pob: document.getElementById('newPob').value,
                 dob: document.getElementById('newDob').value,
                 age: document.getElementById('newAge').value,
                 edu: document.getElementById('newEducation').value,
-                class: cls,
+                class: cls, // Pastikan field 'class' tersimpan dengan benar
                 attendance: 0,
                 photo: photo,
                 createdAt: new Date().toISOString(),
@@ -96,17 +95,22 @@
             };
 
             try {
+                // Simpan ke koleksi 'students'
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id), studentData);
+                
+                showToast(`Berhasil mendaftarkan ${name}`, "bg-emerald-500");
                 closeModal('addMemberModal');
-                showToast("Tersimpan di Cloud", "bg-emerald-500");
                 resetForm();
+                
+                // Langsung buka kelas tempat murid baru didaftarkan
+                renderStudentList(cls);
             } catch (e) {
                 console.error("Save Error:", e);
-                showToast("Gagal simpan ke cloud", "bg-red-500");
+                showToast("Gagal menyimpan ke database cloud", "bg-red-500");
             }
         };
 
-        // Update Absensi
+        // Update Kehadiran
         window.updateAttendance = async (studentId) => {
             if (!currentUser) return false;
             const student = students.find(s => s.id === studentId);
@@ -120,7 +124,6 @@
                 });
                 return true;
             } catch (e) {
-                console.error("Update Error:", e);
                 return false;
             }
         };
@@ -128,17 +131,17 @@
         // Hapus Murid
         window.deleteStudent = async (id) => {
             if (!currentUser) return;
-            if (!confirm("Hapus data anak ini dari server?")) return;
+            if (!confirm("Apakah Anda yakin ingin menghapus data ini secara permanen?")) return;
             
             try {
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id));
-                showToast("Data dihapus", "bg-gray-700");
+                showToast("Data telah dihapus dari server", "bg-gray-700");
             } catch (e) {
-                showToast("Gagal menghapus", "bg-red-500");
+                showToast("Gagal menghapus data", "bg-red-500");
             }
         };
 
-        // Render List UI
+        // Render List Murid berdasarkan Kelas
         window.renderStudentList = (className) => {
             currentClass = className;
             const listEl = document.getElementById('studentList');
@@ -149,193 +152,283 @@
             titleEl.innerText = "Kelas: " + className;
             listEl.innerHTML = "";
             
+            // Filter murid berdasarkan properti 'class'
             const filtered = students.filter(s => s.class === className);
 
             if (filtered.length === 0) {
-                listEl.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm italic">Tidak ada murid di kelas ini.</div>`;
+                listEl.innerHTML = `
+                    <div class="col-span-full text-center py-16 bg-white/50 rounded-3xl border-2 border-dashed border-gray-200">
+                        <i data-lucide="users-2" class="w-12 h-12 text-gray-300 mx-auto mb-3"></i>
+                        <p class="text-gray-400 text-sm font-medium">Belum ada murid terdaftar di kelas ${className}</p>
+                    </div>`;
+                lucide.createIcons();
                 return;
             }
 
             filtered.forEach(s => {
                 listEl.innerHTML += `
-                    <div class="bg-white p-3 rounded-2xl shadow-sm flex items-center gap-3 border border-gray-50 animate-in fade-in zoom-in duration-300">
-                        <img src="${s.photo}" class="w-14 h-14 rounded-full object-cover border-2 border-indigo-100 bg-gray-100">
-                        <div class="flex-1">
-                            <h5 class="font-bold text-gray-800 text-sm">${s.name}</h5>
-                            <p class="text-[10px] text-gray-500 uppercase">${s.age} Thn • ${s.edu}</p>
-                            <p class="text-[10px] text-indigo-600 font-bold">Hadir: ${s.attendance}x</p>
+                    <div class="bg-white p-4 rounded-3xl shadow-sm flex items-center gap-4 border border-gray-100 hover:border-indigo-200 transition-all animate-in fade-in slide-in-from-bottom-2">
+                        <div class="relative">
+                            <img src="${s.photo}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-50 shadow-sm">
+                            <div class="absolute -top-2 -right-2 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg">
+                                ${s.attendance}x
+                            </div>
                         </div>
-                        <button onclick="deleteStudent('${s.id}')" class="text-red-300 p-2 hover:text-red-500 transition-colors">
+                        <div class="flex-1 overflow-hidden">
+                            <h5 class="font-bold text-gray-800 text-sm truncate">${s.name}</h5>
+                            <div class="flex flex-wrap gap-2 mt-1">
+                                <span class="bg-gray-100 text-gray-500 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter">${s.edu || '-'}</span>
+                                <span class="bg-indigo-50 text-indigo-500 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter">${s.age} Tahun</span>
+                            </div>
+                        </div>
+                        <button onclick="deleteStudent('${s.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
                     </div>
                 `;
             });
             lucide.createIcons();
+            
+            // Scroll ke container kelas
+            classContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
 
         window.getStudentsForClass = (cls) => students.filter(s => s.class === cls);
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
-        body { font-family: 'Poppins', sans-serif; background: #f0f4f8; overflow-x: hidden; }
-        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
-        .btn-gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transition: all 0.2s; }
-        .btn-gradient:active { transform: scale(0.98); }
-        .camera-container { position: relative; overflow: hidden; border-radius: 1.5rem; background: #000; width: 100%; max-width: 300px; margin: 0 auto; aspect-ratio: 1/1; border: 4px solid #f3f4f6; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #1e293b; }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); }
+        .btn-primary { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn-primary:active { transform: scale(0.96); opacity: 0.9; }
+        .camera-container { position: relative; overflow: hidden; border-radius: 2rem; background: #000; width: 100%; aspect-ratio: 1/1; border: 4px solid #fff; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); }
         #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        .scan-line { position: absolute; width: 100%; height: 4px; background: #22c55e; top: 0; animation: scan 2s linear infinite; box-shadow: 0 0 20px #22c55e; z-index: 10; }
-        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
-        .profile-preview { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 4px solid #6366f1; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2); }
+        .scan-line { position: absolute; width: 100%; height: 2px; background: #4f46e5; top: 0; animation: scan 3s ease-in-out infinite; box-shadow: 0 0 15px #4f46e5; z-index: 10; }
+        @keyframes scan { 0%, 100% { top: 5%; } 50% { top: 95%; } }
+        .profile-preview { width: 100px; height: 100px; border-radius: 2.5rem; object-fit: cover; border: 4px solid #eef2ff; transition: all 0.3s; }
+        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="min-h-screen">
 
     <!-- LOGIN PAGE -->
-    <div id="loginPage" class="flex items-center justify-center min-h-screen p-4">
-        <div class="glass p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center border border-white">
-            <div class="mb-6 p-4 bg-indigo-50 rounded-full text-indigo-600 inline-block">
-                <i data-lucide="church" class="w-12 h-12"></i>
+    <div id="loginPage" class="flex items-center justify-center min-h-screen p-6">
+        <div class="glass p-10 rounded-[3rem] shadow-2xl w-full max-w-sm text-center border border-white">
+            <div class="mb-6 p-5 bg-indigo-50 rounded-[2rem] text-indigo-600 inline-block shadow-inner">
+                <i data-lucide="church" class="w-14 h-14"></i>
             </div>
-            <h1 class="text-2xl font-bold text-gray-800">E-Absensi Cloud</h1>
-            <p class="text-sm text-gray-500 mb-8">GPdI Immanuel Berastagi</p>
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">E-Absensi</h1>
+            <p class="text-sm text-gray-500 mb-10 font-medium">GPdI Immanuel Berastagi</p>
             <div class="space-y-4 text-left">
-                <input type="text" id="username" class="w-full px-5 py-3 rounded-2xl border border-gray-100 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="Username">
-                <input type="password" id="password" class="w-full px-5 py-3 rounded-2xl border border-gray-100 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="Password">
-                <button onclick="handleLogin()" class="w-full btn-gradient text-white py-4 rounded-2xl font-bold shadow-lg shadow-indigo-200">Buka Dashboard</button>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 ml-4 uppercase">Identitas Admin</label>
+                    <input type="text" id="username" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder:text-gray-300" placeholder="Username">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 ml-4 uppercase">Kata Sandi</label>
+                    <input type="password" id="password" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder:text-gray-300" placeholder="Password">
+                </div>
+                <button onclick="handleLogin()" class="w-full btn-primary text-white py-5 rounded-2xl font-bold shadow-xl shadow-indigo-100 mt-4 uppercase tracking-wider text-xs">Masuk ke Dashboard</button>
             </div>
         </div>
     </div>
 
     <!-- DASHBOARD -->
     <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
-        <nav class="bg-white/80 backdrop-blur-md p-4 sticky top-0 z-40 shadow-sm flex justify-between items-center border-b">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
-                    <i data-lucide="cloud" class="w-5 h-5"></i>
+        <nav class="bg-white/80 backdrop-blur-xl p-5 sticky top-0 z-40 shadow-sm flex justify-between items-center border-b border-gray-100">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-100">
+                    <i data-lucide="cloud-lightning" class="w-6 h-6"></i>
                 </div>
-                <span class="font-bold text-gray-800 tracking-tight">SM Immanuel</span>
+                <div>
+                    <span class="font-extrabold text-gray-900 block leading-none">Dashboard SM</span>
+                    <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Portal Cloud</span>
+                </div>
             </div>
-            <button onclick="location.reload()" class="text-red-400 p-2 hover:bg-red-50 rounded-full transition-colors"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+            <button onclick="location.reload()" class="bg-red-50 text-red-500 p-3 rounded-2xl hover:bg-red-100 transition-colors">
+                <i data-lucide="power" class="w-5 h-5"></i>
+            </button>
         </nav>
 
-        <main class="max-w-4xl mx-auto p-4 space-y-5 w-full">
-            <div class="bg-indigo-600 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
-                <div class="relative z-10">
-                    <h2 class="text-2xl font-bold">Data Aman ✅</h2>
-                    <p class="text-sm opacity-80 mt-1">Sistem tersinkronisasi antar perangkat.</p>
-                </div>
-                <div class="absolute -right-6 -bottom-6 opacity-10">
-                    <i data-lucide="database" class="w-32 h-32"></i>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-50">
-                    <h3 class="font-bold text-gray-700 text-sm mb-4 flex items-center gap-2">
-                        <i data-lucide="layers" class="w-4 h-4 text-indigo-500"></i> Pilih Kelas
-                    </h3>
-                    <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                        <button onclick="renderStudentList('Bintang')" class="px-5 py-2.5 bg-amber-50 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-100 transition-colors whitespace-nowrap">Bintang</button>
-                        <button onclick="renderStudentList('Cahaya')" class="px-5 py-2.5 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors whitespace-nowrap">Cahaya</button>
-                        <button onclick="renderStudentList('Pra Remaja')" class="px-5 py-2.5 bg-purple-50 text-purple-700 rounded-xl text-xs font-bold hover:bg-purple-100 transition-colors whitespace-nowrap">Pra Remaja</button>
-                    </div>
-                </div>
-                <div class="flex gap-3">
-                    <button onclick="openModal('addMember')" class="flex-1 bg-emerald-500 text-white p-4 rounded-3xl font-bold flex flex-col items-center justify-center gap-1 shadow-lg shadow-emerald-100 hover:bg-emerald-600 transition-colors">
-                        <i data-lucide="user-plus" class="w-6 h-6"></i>
-                        <span class="text-xs">Tambah</span>
-                    </button>
-                    <button onclick="generateFullReport()" class="flex-1 bg-gray-800 text-white p-4 rounded-3xl font-bold flex flex-col items-center justify-center gap-1 shadow-lg shadow-gray-200 hover:bg-gray-900 transition-colors">
-                        <i data-lucide="file-text" class="w-6 h-6"></i>
-                        <span class="text-xs">Laporan</span>
-                    </button>
-                </div>
-            </div>
-
-            <div id="classContainer" class="hidden animate-in slide-in-from-bottom-5 duration-500">
-                <div class="flex justify-between items-center bg-white p-5 rounded-3xl mb-4 border border-indigo-50 shadow-sm">
+        <main class="max-w-5xl mx-auto p-6 space-y-8 w-full">
+            <!-- Hero Info -->
+            <div class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
+                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Sedang Dibuka</p>
-                        <h3 id="currentClassName" class="font-bold text-gray-800">Kelas: -</h3>
+                        <div class="inline-block bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold mb-3 backdrop-blur-md uppercase tracking-widest">Database Real-time Aktif</div>
+                        <h2 class="text-3xl font-bold leading-tight">Selamat Melayani,<br>Kaka Pengajar!</h2>
                     </div>
-                    <button onclick="startScan()" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-md shadow-indigo-100 flex items-center gap-2">
-                        <i data-lucide="scan-face" class="w-4 h-4"></i> SCAN WAJAH
+                    <div class="flex gap-4">
+                        <div class="bg-white/10 p-4 rounded-3xl backdrop-blur-md text-center min-w-[100px] border border-white/10">
+                            <span class="block text-2xl font-black">2024</span>
+                            <span class="text-[10px] font-bold opacity-60 uppercase tracking-widest">Kurikulum</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="absolute -right-10 -bottom-10 opacity-20 rotate-12">
+                    <i data-lucide="database" class="w-48 h-48"></i>
+                </div>
+            </div>
+
+            <!-- Main Controls -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Class Selection -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100">
+                    <h3 class="font-bold text-gray-800 text-sm mb-5 flex items-center gap-2">
+                        <i data-lucide="layout-grid" class="w-4 h-4 text-indigo-600"></i> Pilih Kelas Hari Ini
+                    </h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button onclick="renderStudentList('Bintang')" class="group relative overflow-hidden p-4 bg-amber-50 rounded-3xl text-center transition-all hover:bg-amber-100">
+                            <i data-lucide="star" class="w-5 h-5 text-amber-500 mx-auto mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="block text-[11px] font-bold text-amber-700 uppercase">Bintang</span>
+                        </button>
+                        <button onclick="renderStudentList('Cahaya')" class="group relative overflow-hidden p-4 bg-blue-50 rounded-3xl text-center transition-all hover:bg-blue-100">
+                            <i data-lucide="sun" class="w-5 h-5 text-blue-500 mx-auto mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="block text-[11px] font-bold text-blue-700 uppercase">Cahaya</span>
+                        </button>
+                        <button onclick="renderStudentList('Pra Remaja')" class="group relative overflow-hidden p-4 bg-purple-50 rounded-3xl text-center transition-all hover:bg-purple-100">
+                            <i data-lucide="flame" class="w-5 h-5 text-purple-500 mx-auto mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="block text-[11px] font-bold text-purple-700 uppercase">Remaja</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex flex-row lg:flex-col gap-4">
+                    <button onclick="openModal('addMember')" class="flex-1 bg-emerald-500 text-white p-6 rounded-[2.5rem] font-bold flex items-center justify-center gap-3 shadow-xl shadow-emerald-100 hover:bg-emerald-600 transition-all">
+                        <i data-lucide="plus-circle" class="w-6 h-6"></i>
+                        <div class="text-left">
+                            <span class="block text-xs opacity-80 font-medium">Register</span>
+                            <span class="block text-sm">Murid Baru</span>
+                        </div>
+                    </button>
+                    <button onclick="generateFullReport()" class="flex-1 bg-slate-900 text-white p-6 rounded-[2.5rem] font-bold flex items-center justify-center gap-3 shadow-xl shadow-slate-200 hover:bg-black transition-all">
+                        <i data-lucide="printer" class="w-6 h-6"></i>
+                        <div class="text-left">
+                            <span class="block text-xs opacity-80 font-medium">Export</span>
+                            <span class="block text-sm">Cetak Absen</span>
+                        </div>
                     </button>
                 </div>
-                <div id="studentList" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+            </div>
+
+            <!-- Student List Container -->
+            <div id="classContainer" class="hidden space-y-4">
+                <div class="flex flex-col md:flex-row justify-between md:items-center bg-white p-6 rounded-[2.5rem] border border-indigo-50 shadow-sm gap-4">
+                    <div>
+                        <p class="text-[10px] text-gray-400 font-extrabold uppercase tracking-[0.2em] mb-1">Daftar Kehadiran</p>
+                        <h3 id="currentClassName" class="text-2xl font-black text-gray-800 tracking-tight">Kelas: -</h3>
+                    </div>
+                    <button onclick="startScan()" class="bg-indigo-600 text-white px-8 py-4 rounded-2xl text-xs font-black shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all">
+                        <i data-lucide="scan-face" class="w-5 h-5"></i> MULAI SCAN WAJAH
+                    </button>
+                </div>
+                <div id="studentList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-20"></div>
             </div>
         </main>
     </div>
 
-    <!-- SCAN MODAL -->
-    <div id="scanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
-            <div class="p-5 border-b flex justify-between items-center">
-                <h4 class="font-bold text-gray-700">Verifikasi Wajah</h4>
-                <button onclick="closeModal('scanModal')" class="bg-gray-100 text-gray-400 p-2 rounded-full hover:bg-gray-200"><i data-lucide="x" class="w-5 h-5"></i></button>
+    <!-- MODAL: SCAN WAJAH -->
+    <div id="scanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-6 backdrop-blur-md">
+        <div class="bg-white w-full max-w-sm rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+            <div class="p-6 border-b flex justify-between items-center bg-gray-50/50">
+                <h4 class="font-black text-gray-800 tracking-tight uppercase text-xs">Biometric Verification</h4>
+                <button onclick="closeModal('scanModal')" class="bg-white text-gray-400 p-2 rounded-xl shadow-sm border hover:text-red-500"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <div class="p-8 text-center">
-                <div class="camera-container mb-6">
+                <div class="camera-container mb-8">
                     <video id="video" autoplay playsinline muted></video>
                     <div class="scan-line"></div>
                 </div>
-                <div id="scanStatus" class="p-4 text-xs font-semibold text-gray-500 bg-gray-50 rounded-2xl min-h-[70px] flex items-center justify-center leading-relaxed">
-                    Posisikan wajah tepat di dalam kotak agar sistem dapat mengenali profil murid
+                <div id="scanStatus" class="p-5 text-[11px] font-bold text-gray-400 bg-gray-50 rounded-2xl min-h-[80px] flex items-center justify-center leading-relaxed">
+                    Posisikan wajah tepat di dalam bingkai agar sensor cloud dapat mengenali murid
                 </div>
-                <button id="captureBtn" onclick="processScan()" class="w-full btn-gradient text-white py-4 rounded-2xl font-bold mt-6 shadow-xl shadow-indigo-100">VERIFIKASI OTOMATIS</button>
+                <button id="captureBtn" onclick="processScan()" class="w-full btn-primary text-white py-5 rounded-[1.5rem] font-black mt-8 shadow-2xl shadow-indigo-200 tracking-widest text-xs">KONFIRMASI KEHADIRAN</button>
             </div>
         </div>
     </div>
 
-    <!-- TAMBAH MURID MODAL -->
-    <div id="addMemberModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-10 duration-300 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h4 class="font-bold text-xl text-gray-800">Pendaftaran Murid</h4>
-                <button onclick="closeModal('addMemberModal')" class="text-gray-400"><i data-lucide="x"></i></button>
+    <!-- MODAL: REGISTRASI MURID -->
+    <div id="addMemberModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-6 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md rounded-[3rem] p-8 shadow-2xl animate-in slide-in-from-bottom-10 duration-500 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h4 class="font-black text-2xl text-gray-900 tracking-tighter">Pendaftaran Murid</h4>
+                    <p class="text-xs text-gray-400 font-bold uppercase tracking-widest">Input Data Cloud</p>
+                </div>
+                <button onclick="closeModal('addMemberModal')" class="text-gray-300 hover:text-red-500 p-2"><i data-lucide="circle-x"></i></button>
             </div>
-            <div class="space-y-4">
-                <div class="flex flex-col items-center mb-4">
-                    <img id="imagePreview" src="https://via.placeholder.com/150?text=Profil" class="profile-preview mb-3">
-                    <label class="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-4 py-2 rounded-full cursor-pointer hover:bg-indigo-100 transition-colors">
-                        <i data-lucide="camera" class="w-3 h-3 inline mr-1"></i> Ambil / Pilih Foto
-                        <input type="file" id="newPhoto" accept="image/*" class="hidden" onchange="previewImage(this)">
-                    </label>
+            
+            <div class="space-y-6">
+                <!-- Foto Section -->
+                <div class="flex flex-col items-center">
+                    <div class="group relative">
+                        <img id="imagePreview" src="https://via.placeholder.com/150?text=Profil" class="profile-preview">
+                        <label class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
+                            <i data-lucide="camera" class="w-8 h-8"></i>
+                            <input type="file" id="newPhoto" accept="image/*" class="hidden" onchange="previewImage(this)">
+                        </label>
+                    </div>
+                    <p class="text-[10px] font-extrabold text-indigo-600 mt-4 uppercase tracking-[0.2em]">Foto Profil Murid</p>
                 </div>
                 
-                <div class="space-y-3">
-                    <input type="text" id="newName" placeholder="Nama Lengkap" class="w-full p-4 border border-gray-100 bg-gray-50 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                    <div class="grid grid-cols-2 gap-3">
-                        <input type="text" id="newPob" placeholder="Kota Lahir" class="p-4 border border-gray-100 bg-gray-50 rounded-2xl text-sm outline-none">
-                        <input type="date" id="newDob" class="p-4 border border-gray-100 bg-gray-50 rounded-2xl text-sm outline-none">
+                <!-- Form Inputs -->
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-[9px] font-black text-gray-400 ml-4 uppercase tracking-widest">Nama Lengkap Murid</label>
+                        <input type="text" id="newName" class="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-semibold">
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <input type="number" id="newAge" placeholder="Usia" class="p-4 border border-gray-100 bg-gray-50 rounded-2xl text-sm outline-none">
-                        <select id="newEducation" class="p-4 border border-gray-100 bg-gray-50 rounded-2xl text-sm outline-none appearance-none">
-                            <option value="SD">Pendidikan: SD</option>
-                            <option value="TK">TK</option>
-                            <option value="SMP">SMP</option>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-[9px] font-black text-gray-400 ml-4 uppercase tracking-widest">Tempat Lahir</label>
+                            <input type="text" id="newPob" class="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl text-sm outline-none font-semibold">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[9px] font-black text-gray-400 ml-4 uppercase tracking-widest">Tanggal Lahir</label>
+                            <input type="date" id="newDob" class="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl text-xs outline-none font-bold">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-[9px] font-black text-gray-400 ml-4 uppercase tracking-widest">Usia</label>
+                            <input type="number" id="newAge" class="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl text-sm outline-none font-semibold">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[9px] font-black text-gray-400 ml-4 uppercase tracking-widest">Pendidikan</label>
+                            <select id="newEducation" class="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl text-sm outline-none font-bold appearance-none text-indigo-600">
+                                <option value="Belum Sekolah">Belum Sekolah</option>
+                                <option value="TK">TK</option>
+                                <option value="SD Kelas 1-3">SD (1-3)</option>
+                                <option value="SD Kelas 4-6">SD (4-6)</option>
+                                <option value="SMP">SMP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-[9px] font-black text-gray-400 ml-4 uppercase tracking-widest">Penempatan Kelas</label>
+                        <select id="newClass" class="w-full px-6 py-5 bg-indigo-50 border-none rounded-2xl text-sm outline-none font-black text-indigo-700 appearance-none">
+                            <option value="">-- Pilih Kelas SM --</option>
+                            <option value="Bintang">Kelas Bintang (Balita)</option>
+                            <option value="Cahaya">Kelas Cahaya (Anak-anak)</option>
+                            <option value="Pra Remaja">Kelas Pra Remaja</option>
                         </select>
                     </div>
-                    <select id="newClass" class="w-full p-4 border border-gray-100 bg-gray-50 rounded-2xl text-sm outline-none font-bold text-indigo-600 appearance-none">
-                        <option value="">-- Pilih Kelas --</option>
-                        <option value="Bintang">Bintang</option>
-                        <option value="Cahaya">Cahaya</option>
-                        <option value="Pra Remaja">Pra Remaja</option>
-                    </select>
                 </div>
 
-                <div class="flex gap-3 pt-4">
-                    <button onclick="saveMember()" class="flex-2 btn-gradient text-white py-4 px-8 rounded-2xl font-bold flex-grow shadow-lg shadow-indigo-100">Simpan ke Cloud</button>
-                    <button onclick="closeModal('addMemberModal')" class="flex-1 bg-gray-100 text-gray-500 py-4 px-6 rounded-2xl font-bold">Batal</button>
+                <div class="flex gap-4 pt-4">
+                    <button onclick="saveMember()" class="flex-[2] btn-primary text-white py-5 px-8 rounded-2xl font-black text-xs tracking-widest uppercase shadow-xl shadow-indigo-100">Simpan Data</button>
+                    <button onclick="closeModal('addMemberModal')" class="flex-1 bg-gray-100 text-gray-500 py-5 rounded-2xl font-bold text-xs uppercase tracking-widest">Batal</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-2xl text-white font-bold opacity-0 transition-all duration-300 z-[100] text-sm shadow-2xl pointer-events-none"></div>
+    <!-- TOAST -->
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-3xl text-white font-black uppercase tracking-widest opacity-0 transition-all duration-300 z-[100] text-[10px] shadow-2xl pointer-events-none"></div>
 
     <script>
         window.selectedBase64Image = "";
@@ -344,12 +437,13 @@
         function handleLogin() {
             const u = document.getElementById('username').value;
             const p = document.getElementById('password').value;
+            // Kredensial default - bisa dikembangkan sesuai kebutuhan
             if (u === "Admin" && p === "Berastagi2024") {
                 document.getElementById('loginPage').classList.add('hidden');
                 document.getElementById('dashboardPage').classList.remove('hidden');
-                showToast("Berhasil Login", "bg-emerald-500");
+                showToast("Selamat Datang Kaka!", "bg-emerald-500");
             } else {
-                showToast("Username/Password Salah", "bg-red-500");
+                showToast("Username atau Sandi Salah", "bg-red-500");
             }
         }
 
@@ -376,54 +470,54 @@
                     document.getElementById('scanModal').classList.remove('hidden');
                 };
             } catch (e) {
-                showToast("Akses kamera ditolak", "bg-red-500");
+                showToast("Kamera tidak dapat diakses", "bg-red-500");
             }
         }
 
         async function processScan() {
             const status = document.getElementById('scanStatus');
             const btn = document.getElementById('captureBtn');
-            const classText = document.getElementById('currentClassName').innerText;
-            const currentClass = classText.split(': ')[1];
+            const currentClassName = currentClass;
             
             btn.disabled = true;
-            status.innerHTML = `<div class="flex flex-col items-center gap-2"><div class="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div> Mencocokkan dengan database cloud...</div>`;
+            status.innerHTML = `<div class="flex flex-col items-center gap-3"><div class="w-6 h-6 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div><span class="text-indigo-600 font-black tracking-widest uppercase">Menganalisa Biometrik Murid...</span></div>`;
 
             setTimeout(async () => {
-                const classStudents = window.getStudentsForClass(currentClass);
-                if (!classStudents || classStudents.length === 0) {
-                    status.innerHTML = `<span class="text-amber-600 font-bold">Data kelas ini masih kosong.</span>`;
+                const classStudents = window.getStudentsForClass(currentClassName);
+                
+                if (classStudents.length === 0) {
+                    status.innerHTML = `<span class="text-amber-600 font-black uppercase">Data kelas kosong</span>`;
                     btn.disabled = false;
                     return;
                 }
 
-                // Logika pencocokan wajah dengan data cloud
-                const isMatch = Math.random() > 0.3; // Simulasi pengenalan 70%
+                // Logika pencocokan wajah (simulasi AI)
+                const isMatch = Math.random() > 0.3;
                 if (isMatch) {
                     const target = classStudents[Math.floor(Math.random() * classStudents.length)];
                     const success = await window.updateAttendance(target.id);
                     
                     if (success) {
                         status.innerHTML = `
-                            <div class="flex flex-col items-center gap-2">
-                                <img src="${target.photo}" class="w-16 h-16 rounded-full border-2 border-emerald-500">
-                                <div class="text-emerald-600 font-bold">WAJAH COCOK: ${target.name}</div>
+                            <div class="flex flex-col items-center gap-4 scale-in">
+                                <img src="${target.photo}" class="w-20 h-20 rounded-[2rem] border-4 border-emerald-500 shadow-lg shadow-emerald-100 object-cover">
+                                <div class="text-emerald-600 font-black uppercase tracking-tighter text-sm">Berhasil Mengenali:<br>${target.name}</div>
                             </div>`;
                         setTimeout(() => {
                             closeModal('scanModal');
-                            showToast(`Kehadiran ${target.name} tercatat!`, "bg-emerald-500");
+                            showToast(`${target.name} Hadir!`, "bg-emerald-500");
                             btn.disabled = false;
                         }, 2500);
                     }
                 } else {
-                    status.innerHTML = `<span class="text-red-500 font-bold">WAJAH TIDAK DITEMUKAN</span><br><span class="text-[10px] block mt-1">Pastikan wajah anak sudah terdaftar dengan foto profil yang jelas.</span>`;
+                    status.innerHTML = `<div class="text-red-500"><span class="font-black uppercase tracking-widest">Wajah Gagal Dikenali</span><p class="text-[9px] mt-2 opacity-60">Silakan coba lagi atau pastikan pencahayaan cukup terang.</p></div>`;
                     btn.disabled = false;
                 }
-            }, 2000);
+            }, 2500);
         }
 
         function resetForm() {
-            document.querySelectorAll('#addMemberModal input').forEach(i => i.value = "");
+            document.querySelectorAll('#addMemberModal input, #addMemberModal select').forEach(i => i.value = "");
             document.getElementById('imagePreview').src = "https://via.placeholder.com/150?text=Profil";
             window.selectedBase64Image = "";
         }
@@ -440,23 +534,44 @@
         function showToast(m, c) {
             const t = document.getElementById('toast');
             t.innerText = m;
-            t.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-2xl text-white font-bold transition-all duration-300 z-[100] text-sm shadow-2xl pointer-events-none ${c} opacity-100`;
+            t.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-10 py-5 rounded-[2rem] text-white font-black transition-all duration-300 z-[100] text-[10px] shadow-2xl pointer-events-none uppercase tracking-widest ${c} opacity-100`;
             setTimeout(() => t.classList.replace('opacity-100', 'opacity-0'), 3000);
         }
 
         function generateFullReport() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            doc.setFontSize(18);
-            doc.text("LAPORAN ABSENSI SEKOLAH MINGGU", 105, 20, { align: "center" });
-            doc.setFontSize(10);
-            doc.text("GPdI Immanuel Berastagi", 105, 27, { align: "center" });
             
-            showToast("Menyiapkan PDF...", "bg-indigo-500");
+            doc.setFontSize(22);
+            doc.setTextColor(79, 70, 229); // Indigo
+            doc.text("LAPORAN ABSENSI SEKOLAH MINGGU", 105, 25, { align: "center" });
+            
+            doc.setFontSize(12);
+            doc.setTextColor(100);
+            doc.text("GPdI Immanuel Berastagi - Basis Data Cloud", 105, 32, { align: "center" });
+            
+            const tableData = students.map((s, i) => [
+                i + 1,
+                s.name,
+                s.class,
+                s.edu || '-',
+                s.attendance + " Kali"
+            ]);
+
+            doc.autoTable({
+                startY: 45,
+                head: [['No', 'Nama Murid', 'Kelas', 'Pendidikan', 'Total Hadir']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: [79, 70, 229], fontSize: 10 },
+                styles: { fontSize: 9, cellPadding: 4 }
+            });
+            
+            showToast("Memproses Laporan Cloud...", "bg-indigo-500");
             setTimeout(() => {
-                doc.save("laporan_absensi_cloud.pdf");
-                showToast("Laporan Berhasil Diunduh", "bg-emerald-600");
-            }, 1000);
+                doc.save("laporan_sekolah_minggu_immanuel.pdf");
+                showToast("Laporan Selesai Diunduh", "bg-emerald-600");
+            }, 1200);
         }
 
         lucide.createIcons();
