@@ -11,7 +11,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const firebaseConfig = JSON.parse(__firebase_config);
@@ -51,8 +51,7 @@
             
             onSnapshot(colRef, (snapshot) => {
                 students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Otomatis render ulang jika data di kelas yang sedang dibuka berubah
-                if (currentClass) renderStudentList(currentClass);
+                if (currentClass) window.renderStudentList(currentClass);
             }, (error) => {
                 console.error("Firestore Error:", error);
             });
@@ -60,15 +59,19 @@
 
         // FUNGSI SIMPAN DATA KE KELAS YANG DIPILIH
         window.saveMember = async () => {
-            if (!currentUser) return showToast("Sesi tidak valid", "bg-red-500");
+            if (!currentUser) return window.showToast("Sesi tidak valid", "bg-red-500");
 
             const name = document.getElementById('newName').value.trim();
             const cls = document.getElementById('newClass').value;
             const photo = window.selectedBase64Image;
 
             if (!name || !cls || !photo) {
-                return showToast("Nama, Kelas, dan Foto wajib diisi!", "bg-amber-500");
+                return window.showToast("Nama, Kelas, dan Foto wajib diisi!", "bg-amber-500");
             }
+
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true;
+            btn.innerText = "MENYIMPAN...";
 
             const id = Date.now().toString();
             const studentData = {
@@ -77,25 +80,24 @@
                 dob: document.getElementById('newDob').value,
                 age: document.getElementById('newAge').value,
                 edu: document.getElementById('newEducation').value,
-                class: cls, // Data kelas disimpan di sini
+                class: cls,
                 attendance: 0,
                 photo: photo,
-                createdAt: new Date().toISOString()
+                createdAt: serverTimestamp()
             };
 
             try {
-                // Simpan ke Firestore Cloud
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id), studentData);
-                
-                showToast(`Berhasil mendaftarkan ${name} ke kelas ${cls}`, "bg-emerald-500");
-                closeModal('addMemberModal');
-                resetForm();
-                
-                // Langsung tampilkan kelas tempat murid baru didaftarkan
-                renderStudentList(cls);
+                window.showToast(`Berhasil mendaftarkan ${name}`, "bg-emerald-500");
+                window.closeModal('addMemberModal');
+                window.resetForm();
+                window.renderStudentList(cls);
             } catch (e) {
                 console.error("Save Error:", e);
-                showToast("Gagal menyimpan data", "bg-red-500");
+                window.showToast("Gagal menyimpan data", "bg-red-500");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "SIMPAN DATA";
             }
         };
 
@@ -109,7 +111,6 @@
             titleEl.innerText = "Kelas: " + className;
             listEl.innerHTML = "";
             
-            // Filter murid berdasarkan kategori kelas (Bintang, Cahaya, Pra Remaja)
             const filtered = students.filter(s => s.class === className);
 
             if (filtered.length === 0) {
@@ -123,26 +124,27 @@
             }
 
             filtered.forEach(s => {
-                listEl.innerHTML += `
-                    <div class="bg-white p-4 rounded-3xl shadow-sm flex items-center gap-4 border border-gray-100 hover:border-indigo-200 transition-all">
-                        <div class="relative">
-                            <img src="${s.photo}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-50 shadow-sm">
-                            <div class="absolute -top-2 -right-2 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg">
-                                ${s.attendance}x
-                            </div>
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-3xl shadow-sm flex items-center gap-4 border border-gray-100 hover:border-indigo-200 transition-all";
+                card.innerHTML = `
+                    <div class="relative">
+                        <img src="${s.photo}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-50 shadow-sm">
+                        <div class="absolute -top-2 -right-2 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg">
+                            ${s.attendance}x
                         </div>
-                        <div class="flex-1 overflow-hidden">
-                            <h5 class="font-bold text-gray-800 text-sm truncate">${s.name}</h5>
-                            <div class="flex flex-wrap gap-2 mt-1">
-                                <span class="bg-gray-100 text-gray-500 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">${s.edu || '-'}</span>
-                                <span class="bg-indigo-50 text-indigo-500 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">${s.age} Thn</span>
-                            </div>
-                        </div>
-                        <button onclick="deleteStudent('${s.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
                     </div>
+                    <div class="flex-1 overflow-hidden">
+                        <h5 class="font-bold text-gray-800 text-sm truncate">${s.name}</h5>
+                        <div class="flex flex-wrap gap-2 mt-1">
+                            <span class="bg-gray-100 text-gray-500 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">${s.edu || '-'}</span>
+                            <span class="bg-indigo-50 text-indigo-500 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">${s.age} Thn</span>
+                        </div>
+                    </div>
+                    <button onclick="deleteStudent('${s.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
                 `;
+                listEl.appendChild(card);
             });
             lucide.createIcons();
         };
@@ -168,14 +170,14 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #1e293b; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #1e293b; overflow-x: hidden; }
         .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); }
         .btn-primary { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
         .camera-container { position: relative; overflow: hidden; border-radius: 2rem; background: #000; width: 100%; aspect-ratio: 1/1; border: 4px solid #fff; }
         #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
         .scan-line { position: absolute; width: 100%; height: 2px; background: #4f46e5; top: 0; animation: scan 3s ease-in-out infinite; box-shadow: 0 0 15px #4f46e5; z-index: 10; }
         @keyframes scan { 0%, 100% { top: 5%; } 50% { top: 95%; } }
-        .profile-preview { width: 100px; height: 100px; border-radius: 2.5rem; object-fit: cover; border: 4px solid #eef2ff; }
+        .profile-preview { width: 100px; height: 100px; border-radius: 2.5rem; object-fit: cover; border: 4px solid #eef2ff; background: #f1f5f9; }
         ::-webkit-scrollbar { display: none; }
     </style>
 </head>
@@ -188,9 +190,9 @@
             <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">E-Absensi</h1>
             <p class="text-sm text-gray-500 mb-10 font-medium">GPdI Immanuel Berastagi</p>
             <div class="space-y-4 text-left">
-                <input type="text" id="username" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none outline-none" placeholder="Username">
-                <input type="password" id="password" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none outline-none" placeholder="Password">
-                <button onclick="handleLogin()" class="w-full btn-primary text-white py-5 rounded-2xl font-bold mt-4 uppercase text-xs">Masuk Dashboard</button>
+                <input type="text" id="username" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Username">
+                <input type="password" id="password" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Password">
+                <button onclick="handleLogin()" class="w-full btn-primary text-white py-5 rounded-2xl font-bold mt-4 uppercase text-xs active:scale-95 shadow-lg">Masuk Dashboard</button>
             </div>
         </div>
     </div>
@@ -202,53 +204,53 @@
                 <div class="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white"><i data-lucide="cloud-lightning" class="w-6 h-6"></i></div>
                 <div><span class="font-extrabold text-gray-900 block leading-none text-sm">Portal SM Cloud</span></div>
             </div>
-            <button onclick="location.reload()" class="bg-red-50 text-red-500 p-3 rounded-2xl"><i data-lucide="power" class="w-5 h-5"></i></button>
+            <button onclick="location.reload()" class="bg-red-50 text-red-500 p-3 rounded-2xl active:scale-90"><i data-lucide="power" class="w-5 h-5"></i></button>
         </nav>
 
         <main class="max-w-5xl mx-auto p-6 space-y-8 w-full">
             <div class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
                 <div class="relative z-10">
                     <h2 class="text-3xl font-bold leading-tight">Selamat Melayani,<br>Kaka Pengajar!</h2>
-                    <p class="mt-2 text-white/70 text-sm">Database cloud sinkron secara otomatis</p>
+                    <p class="mt-2 text-white/70 text-sm italic">"Layani Tuhan dengan sukacita"</p>
                 </div>
                 <div class="absolute -right-10 -bottom-10 opacity-20 rotate-12"><i data-lucide="database" class="w-48 h-48"></i></div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 bg-white p-6 rounded-[2.5rem] shadow-sm border">
-                    <h3 class="font-bold text-gray-800 text-sm mb-5">Pilih Kelas Hari Ini</h3>
+                    <h3 class="font-bold text-gray-800 text-sm mb-5">Pilih Kategori Kelas</h3>
                     <div class="grid grid-cols-3 gap-3">
-                        <button onclick="renderStudentList('Bintang')" class="p-4 bg-amber-50 rounded-3xl text-center hover:bg-amber-100 transition-colors">
-                            <i data-lucide="star" class="w-5 h-5 text-amber-500 mx-auto mb-2"></i>
+                        <button onclick="renderStudentList('Bintang')" class="p-4 bg-amber-50 rounded-3xl text-center hover:bg-amber-100 transition-colors active:scale-95 group">
+                            <i data-lucide="star" class="w-5 h-5 text-amber-500 mx-auto mb-2 group-hover:scale-110 transition-transform"></i>
                             <span class="block text-[10px] font-bold text-amber-700 uppercase">Bintang</span>
                         </button>
-                        <button onclick="renderStudentList('Cahaya')" class="p-4 bg-blue-50 rounded-3xl text-center hover:bg-blue-100 transition-colors">
-                            <i data-lucide="sun" class="w-5 h-5 text-blue-500 mx-auto mb-2"></i>
+                        <button onclick="renderStudentList('Cahaya')" class="p-4 bg-blue-50 rounded-3xl text-center hover:bg-blue-100 transition-colors active:scale-95 group">
+                            <i data-lucide="sun" class="w-5 h-5 text-blue-500 mx-auto mb-2 group-hover:scale-110 transition-transform"></i>
                             <span class="block text-[10px] font-bold text-blue-700 uppercase">Cahaya</span>
                         </button>
-                        <button onclick="renderStudentList('Pra Remaja')" class="p-4 bg-purple-50 rounded-3xl text-center hover:bg-purple-100 transition-colors">
-                            <i data-lucide="flame" class="w-5 h-5 text-purple-500 mx-auto mb-2"></i>
+                        <button onclick="renderStudentList('Pra Remaja')" class="p-4 bg-purple-50 rounded-3xl text-center hover:bg-purple-100 transition-colors active:scale-95 group">
+                            <i data-lucide="flame" class="w-5 h-5 text-purple-500 mx-auto mb-2 group-hover:scale-110 transition-transform"></i>
                             <span class="block text-[10px] font-bold text-purple-700 uppercase">Remaja</span>
                         </button>
                     </div>
                 </div>
 
                 <div class="flex flex-row lg:flex-col gap-4">
-                    <button onclick="openModal('addMember')" class="flex-1 bg-emerald-500 text-white p-6 rounded-[2.5rem] font-bold flex items-center justify-center gap-3">
+                    <button onclick="openModal('addMember')" class="flex-1 bg-emerald-500 text-white p-6 rounded-[2.5rem] font-bold flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-emerald-100">
                         <i data-lucide="plus-circle"></i>
                         <span class="text-sm">Murid Baru</span>
                     </button>
-                    <button onclick="generateFullReport()" class="flex-1 bg-slate-900 text-white p-6 rounded-[2.5rem] font-bold flex items-center justify-center gap-3">
+                    <button onclick="generateFullReport()" class="flex-1 bg-slate-900 text-white p-6 rounded-[2.5rem] font-bold flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-slate-100">
                         <i data-lucide="printer"></i>
                         <span class="text-sm">Cetak Absen</span>
                     </button>
                 </div>
             </div>
 
-            <div id="classContainer" class="hidden space-y-4">
+            <div id="classContainer" class="hidden space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div class="flex justify-between items-center bg-white p-6 rounded-[2.5rem] border shadow-sm">
                     <h3 id="currentClassName" class="text-xl font-black text-gray-800 tracking-tight">Kelas: -</h3>
-                    <button onclick="startScan()" class="bg-indigo-600 text-white px-6 py-4 rounded-2xl text-xs font-black flex items-center gap-2">
+                    <button onclick="startScan()" class="bg-indigo-600 text-white px-6 py-4 rounded-2xl text-xs font-black flex items-center gap-2 active:scale-95 shadow-indigo-100 shadow-lg">
                         <i data-lucide="scan-face" class="w-4 h-4"></i> SCAN WAJAH
                     </button>
                 </div>
@@ -259,7 +261,7 @@
 
     <!-- SCAN MODAL -->
     <div id="scanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-6 backdrop-blur-md">
-        <div class="bg-white w-full max-w-sm rounded-[3rem] p-8 text-center animate-in zoom-in">
+        <div class="bg-white w-full max-w-sm rounded-[3rem] p-8 text-center">
             <div class="camera-container mb-6">
                 <video id="video" autoplay playsinline muted></video>
                 <div class="scan-line"></div>
@@ -268,8 +270,8 @@
                 Posisikan wajah tepat di dalam bingkai
             </div>
             <div class="flex gap-3 mt-6">
-                <button id="captureBtn" onclick="processScan()" class="flex-1 btn-primary text-white py-4 rounded-2xl font-black text-xs">KONFIRMASI</button>
-                <button onclick="closeModal('scanModal')" class="px-6 bg-gray-100 text-gray-400 rounded-2xl"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button id="captureBtn" onclick="processScan()" class="flex-1 btn-primary text-white py-4 rounded-2xl font-black text-xs active:scale-95">KONFIRMASI</button>
+                <button onclick="closeModal('scanModal')" class="px-6 bg-gray-100 text-gray-400 rounded-2xl active:scale-90"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
         </div>
     </div>
@@ -277,26 +279,27 @@
     <!-- REGISTER MODAL -->
     <div id="addMemberModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-6 backdrop-blur-sm">
         <div class="bg-white w-full max-w-md rounded-[3rem] p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h4 class="font-black text-2xl mb-8">Pendaftaran Murid</h4>
+            <h4 class="font-black text-2xl mb-8 tracking-tight">Pendaftaran Murid</h4>
             <div class="space-y-6">
                 <div class="flex flex-col items-center">
                     <div class="group relative">
-                        <img id="imagePreview" src="https://via.placeholder.com/150?text=Foto" class="profile-preview">
+                        <img id="imagePreview" src="https://ui-avatars.com/api/?name=?&background=f1f5f9&color=cbd5e1" class="profile-preview">
                         <label class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
                             <i data-lucide="camera"></i>
                             <input type="file" id="newPhoto" accept="image/*" class="hidden" onchange="previewImage(this)">
                         </label>
                     </div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase mt-3">Klik untuk Unggah Foto</p>
                 </div>
                 
                 <div class="space-y-4">
-                    <input type="text" id="newName" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm font-semibold outline-none" placeholder="Nama Lengkap">
+                    <input type="text" id="newName" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Nama Lengkap">
                     <div class="grid grid-cols-2 gap-3">
-                        <input type="text" id="newPob" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm outline-none" placeholder="Tempat Lahir">
-                        <input type="date" id="newDob" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-xs outline-none">
+                        <input type="text" id="newPob" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Tempat Lahir">
+                        <input type="date" id="newDob" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     <div class="grid grid-cols-2 gap-3">
-                        <input type="number" id="newAge" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm outline-none" placeholder="Usia">
+                        <input type="number" id="newAge" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Usia">
                         <select id="newEducation" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm outline-none font-bold">
                             <option value="Belum Sekolah">Belum Sekolah</option>
                             <option value="TK">TK</option>
@@ -305,8 +308,7 @@
                             <option value="SMP">SMP</option>
                         </select>
                     </div>
-                    <!-- SELECT KELAS PENTING -->
-                    <select id="newClass" class="w-full px-6 py-5 bg-indigo-50 rounded-2xl text-sm font-black text-indigo-700 outline-none">
+                    <select id="newClass" class="w-full px-6 py-5 bg-indigo-50 rounded-2xl text-sm font-black text-indigo-700 outline-none border-none">
                         <option value="">-- PILIH KELAS --</option>
                         <option value="Bintang">Kelas Bintang (Balita)</option>
                         <option value="Cahaya">Kelas Cahaya (Anak)</option>
@@ -315,8 +317,8 @@
                 </div>
 
                 <div class="flex gap-4 pt-4">
-                    <button onclick="saveMember()" class="flex-[2] btn-primary text-white py-5 rounded-2xl font-black text-xs">SIMPAN DATA</button>
-                    <button onclick="closeModal('addMemberModal')" class="flex-1 bg-gray-100 text-gray-500 py-5 rounded-2xl font-bold text-xs">BATAL</button>
+                    <button id="btnSave" onclick="saveMember()" class="flex-[2] btn-primary text-white py-5 rounded-2xl font-black text-xs active:scale-95 shadow-lg">SIMPAN DATA</button>
+                    <button onclick="closeModal('addMemberModal')" class="flex-1 bg-gray-100 text-gray-500 py-5 rounded-2xl font-bold text-xs active:scale-95">BATAL</button>
                 </div>
             </div>
         </div>
@@ -331,10 +333,12 @@
         function handleLogin() {
             const u = document.getElementById('username').value;
             const p = document.getElementById('password').value;
+            // Gunakan login sesuai permintaan Anda sebelumnya
             if (u === "Admin" && p === "Berastagi2024") {
                 document.getElementById('loginPage').classList.add('hidden');
                 document.getElementById('dashboardPage').classList.remove('hidden');
                 showToast("Berhasil Masuk", "bg-emerald-500");
+                lucide.createIcons();
             } else {
                 showToast("Gagal Login", "bg-red-500");
             }
@@ -346,6 +350,7 @@
                 reader.onload = (e) => {
                     document.getElementById('imagePreview').src = e.target.result;
                     window.selectedBase64Image = e.target.result;
+                    showToast("Foto terpilih", "bg-indigo-500");
                 };
                 reader.readAsDataURL(input.files[0]);
             }
@@ -357,7 +362,9 @@
                 stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 video.srcObject = stream;
                 document.getElementById('scanModal').classList.remove('hidden');
-            } catch (e) { showToast("Gagal akses kamera", "bg-red-500"); }
+            } catch (e) { 
+                showToast("Gagal akses kamera", "bg-red-500"); 
+            }
         }
 
         async function processScan() {
@@ -370,12 +377,13 @@
             }
 
             status.innerText = "Mencari data murid...";
+            // Simulasi deteksi wajah sederhana (mengambil acak dari database kelas tersebut)
             setTimeout(async () => {
                 const target = classStudents[Math.floor(Math.random() * classStudents.length)];
                 const success = await window.updateAttendance(target.id);
                 if (success) {
-                    status.innerHTML = `<span class="text-emerald-500">${target.name} Berhasil Absen!</span>`;
-                    setTimeout(() => closeModal('scanModal'), 1500);
+                    status.innerHTML = `<span class="text-emerald-500 text-lg uppercase font-black">${target.name}<br>BERHASIL ABSEN!</span>`;
+                    setTimeout(() => closeModal('scanModal'), 2000);
                     showToast(`${target.name} Hadir`, "bg-emerald-500");
                 }
             }, 1000);
@@ -383,11 +391,15 @@
 
         function resetForm() {
             document.querySelectorAll('#addMemberModal input, #addMemberModal select').forEach(i => i.value = "");
-            document.getElementById('imagePreview').src = "https://via.placeholder.com/150?text=Foto";
+            document.getElementById('imagePreview').src = "https://ui-avatars.com/api/?name=?&background=f1f5f9&color=cbd5e1";
             window.selectedBase64Image = "";
         }
 
-        function openModal(id) { document.getElementById(id + 'Modal').classList.remove('hidden'); }
+        function openModal(id) { 
+            document.getElementById(id + 'Modal').classList.remove('hidden'); 
+            if (id === 'addMember') resetForm();
+        }
+        
         function closeModal(id) {
             document.getElementById(id).classList.add('hidden');
             if (id === 'scanModal' && stream) {
@@ -410,13 +422,16 @@
             const tableData = students.map((s, i) => [i + 1, s.name, s.class, s.edu, s.attendance]);
             doc.autoTable({
                 startY: 30,
-                head: [['No', 'Nama', 'Kelas', 'Pendidikan', 'Hadir']],
-                body: tableData
+                head: [['No', 'Nama', 'Kelas', 'Pendidikan', 'Total Hadir']],
+                body: tableData,
+                theme: 'grid',
+                headStyles: { fillColor: [79, 70, 229] }
             });
             doc.save("absensi_sekolah_minggu.pdf");
+            showToast("PDF Berhasil Dibuat", "bg-slate-800");
         }
 
-        lucide.createIcons();
+        window.onload = () => lucide.createIcons();
     </script>
 </body>
 </html>
