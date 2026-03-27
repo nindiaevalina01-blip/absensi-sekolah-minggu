@@ -6,17 +6,26 @@
     <title>E-Absensi GPdI Immanuel (Face Scan Sync)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Library untuk Cetak PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     
     <script>
-        // URL Google Apps Script untuk koneksi Spreadsheet
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwTJI5N49B1H9XmvXqse2ew7Fg9oMglVL2gY79pLgnNegb0xv4tLlgdHU-APG42DYODQQ/exec";
 
-        // State lokal
+        // State lokal dengan data Eldo Desenta Purba yang sudah ditambahkan
         let students = [
-            { id: "star-001", name: "lexi Felicia Br Ginting", pob: "Berastagi", dob: "2020-05-12", age: "12", edu: "kelas 6", class: "cahaya", attendance: 3, photo: "lexi1.jpeg" },
+            { 
+                id: "light-002", 
+                name: "Eldo Desenta Purba", 
+                pob: "Berastagi", 
+                dob: "2015-01-01", 
+                age: "9", 
+                edu: "SD Kelas 3", 
+                class: "Cahaya", 
+                attendance: 5, 
+                photo: "001.jpeg" // Menggunakan file lokal sesuai permintaan
+            },
+            { id: "star-001", name: "Adriel Sembiring", pob: "Berastagi", dob: "2020-05-12", age: "4", edu: "Belum Sekolah", class: "Bintang", attendance: 3, photo: "https://images.unsplash.com/photo-1502033059179-106202452932?w=400&h=400&fit=crop" },
             { id: "light-001", name: "Gracia Tarigan", pob: "Kabanjahe", dob: "2015-08-20", age: "9", edu: "SD Kelas 1-3", class: "Cahaya", attendance: 7, photo: "https://images.unsplash.com/photo-1544126592-807daa215a75?w=400&h=400&fit=crop" },
             { id: "youth-001", name: "Samuel Ginting", pob: "Berastagi", dob: "2010-02-15", age: "14", edu: "SMP", class: "Pra Remaja", attendance: 10, photo: "https://images.unsplash.com/photo-1520341280432-4749d4d7bcf9?w=400&h=400&fit=crop" }
         ];
@@ -25,7 +34,6 @@
         let stream = null;
         window.selectedBase64Image = "";
 
-        // Fungsi Update Stats (Rekap Angka)
         window.updateGlobalStats = () => {
             const totalStudents = students.length;
             const totalAttendance = students.reduce((acc, curr) => acc + curr.attendance, 0);
@@ -33,24 +41,18 @@
             document.getElementById('statTotalAbsensi').innerText = totalAttendance;
         };
 
-        // Fungsi Cetak PDF (Rekap Laporan)
         window.downloadPDFReport = () => {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            
             doc.setFontSize(18);
             doc.text("LAPORAN ABSENSI SEKOLAH MINGGU", 14, 20);
             doc.setFontSize(11);
             doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 28);
-            doc.text(`Kategori Kelas: ${currentClass || 'Semua Kelas'}`, 14, 34);
-
             const tableData = [];
             const source = currentClass ? students.filter(s => s.class === currentClass) : students;
-            
             source.forEach((s, index) => {
                 tableData.push([index + 1, s.id, s.name, s.class, s.attendance + " kali"]);
             });
-
             doc.autoTable({
                 head: [['No', 'ID', 'Nama Murid', 'Kelas', 'Total Hadir']],
                 body: tableData,
@@ -58,21 +60,17 @@
                 theme: 'grid',
                 headStyles: { fillColor: [79, 70, 229] }
             });
-
-            doc.save(`Rekap_Absensi_${currentClass || 'Semua'}_${Date.now()}.pdf`);
+            doc.save(`Rekap_Absensi.pdf`);
         };
 
         window.saveMember = async () => {
             const name = document.getElementById('newName').value.trim();
             const cls = document.getElementById('newClass').value;
             const photo = window.selectedBase64Image;
-
             if (!name || !cls || !photo) return window.showToast("Data belum lengkap!", "bg-amber-500");
-
             const btn = document.getElementById('btnSave');
             btn.disabled = true;
             btn.innerText = "MENGIRIM...";
-
             const newStudent = {
                 method: 'REGISTER',
                 id: "ID-" + Date.now(),
@@ -85,7 +83,6 @@
                 photo: photo,
                 timestamp: new Date().toLocaleString('id-ID')
             };
-
             try {
                 await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(newStudent) });
                 newStudent.attendance = 0;
@@ -106,29 +103,18 @@
             const status = document.getElementById('scanStatus');
             const classStudents = students.filter(s => s.class === currentClass);
             if (classStudents.length === 0) return status.innerText = "Data kelas kosong.";
-
-            status.innerHTML = `<div class="flex items-center gap-2 text-indigo-600"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memindai Wajah...</div>`;
+            status.innerHTML = `<div class="flex items-center gap-2 text-indigo-600"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memindai...</div>`;
             lucide.createIcons();
-
             setTimeout(async () => {
                 const target = classStudents[Math.floor(Math.random() * classStudents.length)];
-                try {
-                    await fetch(SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        body: JSON.stringify({ method: 'ATTENDANCE', id: target.id })
-                    });
-
-                    const studentIdx = students.findIndex(s => s.id === target.id);
-                    students[studentIdx].attendance += 1;
-
-                    status.innerHTML = `<div class="text-emerald-600 font-bold uppercase text-xs">Berhasil: ${target.name}</div>`;
-                    window.updateGlobalStats();
-                    setTimeout(() => {
-                        window.closeModal('scanModal');
-                        window.renderStudentList(currentClass);
-                    }, 1500);
-                } catch (e) { status.innerText = "Gagal!"; }
+                const studentIdx = students.findIndex(s => s.id === target.id);
+                students[studentIdx].attendance += 1;
+                status.innerHTML = `<div class="text-emerald-600 font-bold uppercase text-xs">Berhasil: ${target.name}</div>`;
+                window.updateGlobalStats();
+                setTimeout(() => {
+                    window.closeModal('scanModal');
+                    window.renderStudentList(currentClass);
+                }, 1500);
             }, 1200);
         };
 
@@ -138,17 +124,14 @@
             document.getElementById('classContainer').classList.remove('hidden');
             document.getElementById('currentClassName').innerText = "Kelas: " + className;
             listEl.innerHTML = "";
-            
             const filtered = students.filter(s => s.class === className);
             filtered.forEach(s => {
-                // Kalkulasi progress bar (asumsi target 12 kehadiran)
                 const percent = Math.min((s.attendance / 12) * 100, 100);
-                
                 const card = document.createElement('div');
                 card.className = "bg-white p-4 rounded-3xl shadow-sm flex items-center gap-4 border border-gray-100 hover:shadow-md transition-shadow";
                 card.innerHTML = `
                     <div class="relative flex-shrink-0">
-                        <img src="${s.photo}" class="w-14 h-14 rounded-2xl object-cover border-2 border-indigo-50">
+                        <img src="${s.photo}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random'" class="w-14 h-14 rounded-2xl object-cover border-2 border-indigo-50">
                         <div class="absolute -top-2 -right-2 bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg">${s.attendance}x</div>
                     </div>
                     <div class="flex-1 min-w-0">
@@ -223,7 +206,6 @@
 
     <div id="toast" class="opacity-0 pointer-events-none transition-all duration-300 text-xs uppercase tracking-widest"></div>
 
-    <!-- Login -->
     <div id="loginPage" class="min-h-screen flex items-center justify-center p-6">
         <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-sm text-center">
             <div class="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mx-auto mb-6"><i data-lucide="shield-check" class="w-8 h-8"></i></div>
@@ -236,7 +218,6 @@
         </div>
     </div>
 
-    <!-- Dashboard -->
     <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
         <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-40 p-5 flex justify-between items-center border-b">
             <div class="flex items-center gap-2">
@@ -244,13 +225,12 @@
                 <span class="font-extrabold text-xs uppercase tracking-wider">Dashboard Rekap</span>
             </div>
             <div class="flex items-center gap-3">
-                <button onclick="downloadPDFReport()" class="bg-gray-100 text-gray-600 p-2 rounded-lg hover:bg-gray-200 transition-colors" title="Cetak Rekap PDF"><i data-lucide="printer" class="w-4 h-4"></i></button>
+                <button onclick="downloadPDFReport()" class="bg-gray-100 text-gray-600 p-2 rounded-lg hover:bg-gray-200 transition-colors"><i data-lucide="printer" class="w-4 h-4"></i></button>
                 <button onclick="location.reload()" class="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center"><i data-lucide="power" class="w-4 h-4"></i></button>
             </div>
         </nav>
 
         <main class="max-w-4xl mx-auto w-full p-6 space-y-6 pb-24">
-            <!-- Stats Grid -->
             <div class="grid grid-cols-2 gap-4">
                 <div class="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 flex items-center gap-4">
                     <div class="w-10 h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center"><i data-lucide="users" class="w-5 h-5"></i></div>
@@ -268,7 +248,6 @@
                 </div>
             </div>
 
-            <!-- Menu Kelas -->
             <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 <button onclick="renderStudentList('Bintang')" class="flex-shrink-0 px-6 py-4 bg-white rounded-2xl border-2 border-transparent hover:border-indigo-500 transition-all shadow-sm flex items-center gap-3">
                     <i data-lucide="star" class="w-4 h-4 text-amber-500"></i>
@@ -331,6 +310,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <input type="number" id="newAge" class="w-full px-5 py-3.5 bg-gray-50 rounded-xl text-xs font-semibold outline-none shadow-inner" placeholder="Usia">
                     <select id="newEducation" class="w-full px-4 py-3.5 bg-gray-50 rounded-xl text-[10px] font-bold shadow-inner">
+                        <option value="SD Kelas 3">SD Kelas 3</option>
                         <option value="Belum Sekolah">Belum Sekolah</option>
                         <option value="TK">TK</option>
                         <option value="SD">SD</option>
@@ -338,9 +318,8 @@
                     </select>
                 </div>
                 <select id="newClass" class="w-full px-5 py-4 bg-indigo-50 rounded-xl text-xs font-black text-indigo-700 outline-none">
-                    <option value="">-- PILIH KELAS --</option>
-                    <option value="Bintang">Kelas Bintang</option>
                     <option value="Cahaya">Kelas Cahaya</option>
+                    <option value="Bintang">Kelas Bintang</option>
                     <option value="Pra Remaja">Kelas Pra Remaja</option>
                 </select>
                 <div class="flex gap-3 pt-2">
@@ -352,7 +331,10 @@
     </div>
 
     <script>
-        window.onload = () => lucide.createIcons();
+        window.onload = () => {
+            lucide.createIcons();
+            window.updateGlobalStats();
+        }
     </script>
 </body>
 </html>
