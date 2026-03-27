@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Absensi GPdI Immanuel (Cloud)</title>
+    <title>E-Absensi GPdI Immanuel (Cloud Sync)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -20,11 +20,13 @@
         const auth = getAuth(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'absensi-sm-immanuel';
 
+        // URL Google Apps Script yang Anda berikan
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjkxnS02CSS8IfJPD-AVWsJkpL5XqUnRf9-r1SKYXR_sqKQteQWrFBCzsEX2mDPrC5/exec";
+
         let students = [];
         let currentClass = "";
         let currentUser = null;
 
-        // Inisialisasi Autentikasi sesuai Aturan
         async function initAuth() {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -40,28 +42,41 @@
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
-                listenToStudents(); // Mulai mendengarkan perubahan data setelah login
+                listenToStudents();
             }
         });
 
         initAuth();
 
-        // Mendengarkan data secara real-time dari Firestore
         function listenToStudents() {
             if (!currentUser) return;
-            // Path koleksi publik sesuai aturan
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'students');
-            
             onSnapshot(colRef, (snapshot) => {
                 students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Re-render list jika kelas sedang dibuka
                 if (currentClass) window.renderStudentList(currentClass);
             }, (error) => {
                 console.error("Firestore Error:", error);
             });
         }
 
-        // FUNGSI SIMPAN DATA KE DATABASE (PERMANEN)
+        // FUNGSI UNTUK KIRIM KE GOOGLE SHEETS
+        async function syncToGoogleSheets(data) {
+            try {
+                // Menggunakan fetch dengan mode 'no-cors' karena Apps Script seringkali bermasalah dengan CORS redirect
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                return true;
+            } catch (error) {
+                console.error("Sheet Sync Error:", error);
+                return false;
+            }
+        }
+
         window.saveMember = async () => {
             if (!currentUser) return window.showToast("Sesi tidak valid", "bg-red-500");
 
@@ -77,26 +92,33 @@
             btn.disabled = true;
             btn.innerText = "MENYIMPAN...";
 
-            const id = Date.now().toString(); // Gunakan timestamp sebagai ID unik
+            const id = Date.now().toString();
             const studentData = {
+                id: id,
                 name: name,
                 pob: document.getElementById('newPob').value,
                 dob: document.getElementById('newDob').value,
                 age: document.getElementById('newAge').value,
                 edu: document.getElementById('newEducation').value,
                 class: cls,
-                attendance: 0, // Inisialisasi absen nol
+                attendance: 0,
                 photo: photo,
-                createdAt: serverTimestamp()
+                timestamp: new Date().toISOString()
             };
 
             try {
-                // Simpan ke Firestore
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id), studentData);
+                // 1. Simpan ke Firestore (Real-time Cloud)
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id), {
+                    ...studentData,
+                    createdAt: serverTimestamp()
+                });
+
+                // 2. Sinkronisasi ke Google Sheets (Database Backup)
+                await syncToGoogleSheets(studentData);
+
                 window.showToast(`Berhasil mendaftarkan ${name}`, "bg-emerald-500");
                 window.closeModal('addMemberModal');
                 window.resetForm();
-                // renderStudentList akan terpanggil otomatis oleh onSnapshot
             } catch (e) {
                 console.error("Save Error:", e);
                 window.showToast("Gagal menyimpan ke Cloud", "bg-red-500");
@@ -106,7 +128,6 @@
             }
         };
 
-        // Render List Murid Berdasarkan Kelas
         window.renderStudentList = (className) => {
             currentClass = className;
             const listEl = document.getElementById('studentList');
@@ -136,7 +157,7 @@
                     <div class="relative">
                         <img src="${s.photo}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-50 shadow-sm">
                         <div class="absolute -top-2 -right-2 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg">
-                            ${s.attendance}x
+                            ${s.attendance || 0}x
                         </div>
                     </div>
                     <div class="flex-1 overflow-hidden">
@@ -157,7 +178,6 @@
             lucide.createIcons();
         };
 
-        // Update Kehadiran Permanen ke Database
         window.updateAttendance = async (studentId) => {
             if (!currentUser) return false;
             const student = students.find(s => s.id === studentId);
@@ -175,7 +195,6 @@
             }
         };
 
-        // Hapus Data Permanen
         window.deleteStudent = async (id) => {
             if (!currentUser) return;
             if (!confirm("Hapus data anak ini secara permanen dari server?")) return;
@@ -216,7 +235,7 @@
                 <input type="password" id="password" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Password">
                 <button onclick="handleLogin()" class="w-full btn-primary text-white py-5 rounded-2xl font-bold mt-4 uppercase text-xs active:scale-95 shadow-lg">Masuk Dashboard</button>
             </div>
-            <p class="mt-6 text-[10px] text-gray-400 uppercase font-bold tracking-widest">Cloud Database Active</p>
+            <p class="mt-6 text-[10px] text-gray-400 uppercase font-bold tracking-widest">Google Sheet Sync Active</p>
         </div>
     </div>
 
@@ -225,22 +244,20 @@
         <nav class="bg-white/80 backdrop-blur-xl p-5 sticky top-0 z-40 shadow-sm flex justify-between items-center border-b">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white"><i data-lucide="cloud-lightning" class="w-6 h-6"></i></div>
-                <div><span class="font-extrabold text-gray-900 block leading-none text-sm">Portal SM Cloud</span></div>
+                <div><span class="font-extrabold text-gray-900 block leading-none text-sm">Portal SM Sync</span></div>
             </div>
             <button onclick="location.reload()" class="bg-red-50 text-red-500 p-3 rounded-2xl active:scale-90"><i data-lucide="power" class="w-5 h-5"></i></button>
         </nav>
 
         <main class="max-w-5xl mx-auto p-6 space-y-8 w-full">
-            <!-- Header Kartu -->
             <div class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
                 <div class="relative z-10">
                     <h2 class="text-3xl font-bold leading-tight">Selamat Melayani,<br>Kaka Pengajar!</h2>
-                    <p class="mt-2 text-white/70 text-sm italic">"Layani Tuhan dengan sukacita"</p>
+                    <p class="mt-2 text-white/70 text-sm italic">"Cloud & Google Sheet Sinkron"</p>
                 </div>
-                <div class="absolute -right-10 -bottom-10 opacity-20 rotate-12"><i data-lucide="database" class="w-48 h-48"></i></div>
+                <div class="absolute -right-10 -bottom-10 opacity-20 rotate-12"><i data-lucide="sheet" class="w-48 h-48"></i></div>
             </div>
 
-            <!-- Menu Utama -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 bg-white p-6 rounded-[2.5rem] shadow-sm border">
                     <h3 class="font-bold text-gray-800 text-sm mb-5">Pilih Kategori Kelas</h3>
@@ -272,7 +289,6 @@
                 </div>
             </div>
 
-            <!-- Area Daftar Murid -->
             <div id="classContainer" class="hidden space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div class="flex justify-between items-center bg-white p-6 rounded-[2.5rem] border shadow-sm">
                     <h3 id="currentClassName" class="text-xl font-black text-gray-800 tracking-tight">Kelas: -</h3>
@@ -297,7 +313,7 @@
             </div>
             <div class="flex gap-3 mt-6">
                 <button id="captureBtn" onclick="processScan()" class="flex-1 btn-primary text-white py-4 rounded-2xl font-black text-xs active:scale-95">KONFIRMASI</button>
-                <button onclick="closeModal('scanModal')" class="px-6 bg-gray-100 text-gray-400 rounded-2xl active:scale-90"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button onclick="closeModal('scanModal')" class="px-6 bg-gray-100 text-gray-500 rounded-2xl active:scale-90"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
         </div>
     </div>
@@ -307,7 +323,6 @@
         <div class="bg-white w-full max-w-md rounded-[3rem] p-8 shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-100">
             <h4 class="font-black text-2xl mb-8 tracking-tight">Pendaftaran Murid</h4>
             <div class="space-y-6">
-                <!-- Upload Foto -->
                 <div class="flex flex-col items-center">
                     <div class="group relative">
                         <img id="imagePreview" src="https://ui-avatars.com/api/?name=?&background=f1f5f9&color=cbd5e1" class="profile-preview">
@@ -319,7 +334,6 @@
                     <p class="text-[10px] font-bold text-gray-400 uppercase mt-3">Klik untuk Unggah Foto</p>
                 </div>
                 
-                <!-- Input Data -->
                 <div class="space-y-4">
                     <input type="text" id="newName" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Nama Lengkap">
                     <div class="grid grid-cols-2 gap-3">
@@ -344,7 +358,6 @@
                     </select>
                 </div>
 
-                <!-- Tombol Aksi -->
                 <div class="flex gap-4 pt-4">
                     <button id="btnSave" onclick="saveMember()" class="flex-[2] btn-primary text-white py-5 rounded-2xl font-black text-xs active:scale-95 shadow-lg">SIMPAN DATA</button>
                     <button onclick="closeModal('addMemberModal')" class="flex-1 bg-gray-100 text-gray-500 py-5 rounded-2xl font-bold text-xs active:scale-95">BATAL</button>
@@ -353,7 +366,6 @@
         </div>
     </div>
 
-    <!-- Toast Notification -->
     <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-3xl text-white font-black uppercase tracking-widest opacity-0 transition-all duration-300 z-[100] text-[10px] shadow-2xl pointer-events-none"></div>
 
     <script>
@@ -367,7 +379,7 @@
             if (u === "Admin" && p === "Berastagi2024") {
                 document.getElementById('loginPage').classList.add('hidden');
                 document.getElementById('dashboardPage').classList.remove('hidden');
-                showToast("Koneksi Cloud Stabil", "bg-emerald-500");
+                showToast("Koneksi Sinkron Aktif", "bg-emerald-500");
                 lucide.createIcons();
             } else {
                 showToast("Kredensial Salah", "bg-red-500");
@@ -409,7 +421,6 @@
 
             status.innerText = "Mencocokkan database wajah...";
             
-            // Simulasi deteksi (dalam aplikasi nyata memerlukan library face-api.js)
             setTimeout(async () => {
                 const target = classStudents[Math.floor(Math.random() * classStudents.length)];
                 const success = await window.updateAttendance(target.id);
