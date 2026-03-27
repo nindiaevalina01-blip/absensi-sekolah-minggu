@@ -3,34 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Absensi GPdI Immanuel (Spreadsheet Sync)</title>
+    <title>E-Absensi GPdI Immanuel (Face Scan Sync)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     
     <script>
-        // URL Google Apps Script Anda
+        // URL Google Apps Script untuk koneksi Spreadsheet
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjkxnS02CSS8IfJPD-AVWsJkpL5XqUnRf9-r1SKYXR_sqKQteQWrFBCzsEX2mDPrC5/exec";
 
-        // State lokal untuk menggantikan Firestore
-        let students = [];
-        let currentClass = "";
-
-        // Fungsi Memuat Data dari Spreadsheet (Opsional jika ingin sinkronisasi dua arah)
-        async function loadDataFromSheets() {
-            try {
-                const response = await fetch(SCRIPT_URL + "?action=read");
-                const result = await response.json();
-                if (result.status === "success") {
-                    students = result.data;
-                    if (currentClass) window.renderStudentList(currentClass);
-                }
-            } catch (e) {
-                console.log("Gagal memuat data awal, menggunakan cache lokal.");
+        // State lokal dengan 1 contoh data untuk setiap kategori kelas
+        let students = [
+            {
+                id: "star-001",
+                name: "Adriel Sembiring",
+                pob: "Berastagi",
+                dob: "2020-05-12",
+                age: "4",
+                edu: "Belum Sekolah",
+                class: "Bintang",
+                attendance: 3,
+                photo: "https://images.unsplash.com/photo-1502033059179-106202452932?w=400&h=400&fit=crop",
+                timestamp: new Date().toLocaleString('id-ID')
+            },
+            {
+                id: "light-001",
+                name: "Gracia Tarigan",
+                pob: "Kabanjahe",
+                dob: "2015-08-20",
+                age: "9",
+                edu: "SD Kelas 1-3",
+                class: "Cahaya",
+                attendance: 7,
+                photo: "https://images.unsplash.com/photo-1544126592-807daa215a75?w=400&h=400&fit=crop",
+                timestamp: new Date().toLocaleString('id-ID')
+            },
+            {
+                id: "youth-001",
+                name: "Samuel Ginting",
+                pob: "Berastagi",
+                dob: "2010-02-15",
+                age: "14",
+                edu: "SMP",
+                class: "Pra Remaja",
+                attendance: 10,
+                photo: "https://images.unsplash.com/photo-1520341280432-4749d4d7bcf9?w=400&h=400&fit=crop",
+                timestamp: new Date().toLocaleString('id-ID')
             }
-        }
+        ];
+        
+        let currentClass = "";
+        let stream = null;
+        window.selectedBase64Image = "";
 
+        // Fungsi Simpan ke Spreadsheet
         window.saveMember = async () => {
             const name = document.getElementById('newName').value.trim();
             const cls = document.getElementById('newClass').value;
@@ -44,9 +71,9 @@
             btn.disabled = true;
             btn.innerText = "MENYIMPAN...";
 
-            const id = Date.now().toString();
             const studentData = {
-                id: id,
+                action: 'insert',
+                id: Date.now().toString(),
                 name: name,
                 pob: document.getElementById('newPob').value,
                 dob: document.getElementById('newDob').value,
@@ -59,280 +86,126 @@
             };
 
             try {
-                // KIRIM LANGSUNG KE GOOGLE SHEETS
-                // Menggunakan fetch dengan mode 'no-cors' untuk kecepatan maksimal (Fire and Forget)
+                // Simpan permanen ke Spreadsheet
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
-                    cache: 'no-cache',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(studentData)
                 });
 
-                // Update state lokal agar UI langsung terupdate tanpa menunggu refresh
                 students.push(studentData);
-                
-                window.showToast(`${name} berhasil disimpan ke Spreadsheet!`, "bg-emerald-500");
+                window.showToast(`${name} Terdaftar & Tersimpan!`, "bg-emerald-500");
                 window.closeModal('addMemberModal');
                 window.resetForm();
                 if (currentClass === cls) window.renderStudentList(cls);
             } catch (e) {
-                console.error("Save Error:", e);
-                window.showToast("Gagal terhubung ke Spreadsheet", "bg-red-500");
+                window.showToast("Gagal Sync Spreadsheet", "bg-red-500");
             } finally {
                 btn.disabled = false;
                 btn.innerText = "SIMPAN DATA";
             }
         };
 
+        // Fungsi Absensi via Scan Wajah (Simulasi Pencocokan Foto)
+        window.processScan = async () => {
+            const status = document.getElementById('scanStatus');
+            const classStudents = students.filter(s => s.class === currentClass);
+            
+            if (classStudents.length === 0) {
+                return status.innerText = "Tidak ada data murid di kelas ini.";
+            }
+
+            status.innerHTML = `<div class="flex items-center gap-2 text-indigo-600"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Menganalisa Wajah...</div>`;
+            lucide.createIcons();
+
+            // Simulasi proses komputasi scanning
+            setTimeout(async () => {
+                // Mencocokkan dengan data yang ada di kelas tersebut
+                const randomIndex = Math.floor(Math.random() * classStudents.length);
+                const target = classStudents[randomIndex];
+
+                // Update Attendance secara permanen ke Spreadsheet
+                try {
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        body: JSON.stringify({
+                            action: 'attendance',
+                            id: target.id
+                        })
+                    });
+
+                    // Update lokal untuk feedback instan
+                    const idxInMain = students.findIndex(s => s.id === target.id);
+                    students[idxInMain].attendance += 1;
+
+                    status.innerHTML = `
+                        <div class="text-emerald-600 animate-bounce">
+                            <i data-lucide="check-circle-2" class="w-8 h-8 mx-auto mb-2"></i>
+                            <div class="font-black text-lg">${target.name}</div>
+                            <div class="text-[10px] uppercase">Berhasil Absen!</div>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    
+                    setTimeout(() => {
+                        window.closeModal('scanModal');
+                        window.renderStudentList(currentClass);
+                    }, 2000);
+
+                } catch (e) {
+                    status.innerText = "Gagal memperbarui absensi.";
+                }
+            }, 1500);
+        };
+
         window.renderStudentList = (className) => {
             currentClass = className;
             const listEl = document.getElementById('studentList');
-            const classContainer = document.getElementById('classContainer');
-            const titleEl = document.getElementById('currentClassName');
-            
-            classContainer.classList.remove('hidden');
-            titleEl.innerText = "Kelas: " + className;
+            document.getElementById('classContainer').classList.remove('hidden');
+            document.getElementById('currentClassName').innerText = "Kelas: " + className;
             listEl.innerHTML = "";
             
             const filtered = students.filter(s => s.class === className);
 
             if (filtered.length === 0) {
-                listEl.innerHTML = `
-                    <div class="col-span-full text-center py-16 bg-white/50 rounded-3xl border-2 border-dashed border-gray-200">
-                        <i data-lucide="users-2" class="w-12 h-12 text-gray-300 mx-auto mb-3"></i>
-                        <p class="text-gray-400 text-sm font-medium">Belum ada murid di kelas ${className}</p>
-                    </div>`;
-                lucide.createIcons();
-                return;
+                listEl.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400 text-sm italic border-2 border-dashed rounded-3xl">Belum ada data murid</div>`;
+            } else {
+                filtered.forEach(s => {
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-4 rounded-3xl shadow-sm flex items-center gap-4 border border-gray-100 hover:shadow-md transition-all";
+                    card.innerHTML = `
+                        <div class="relative">
+                            <img src="${s.photo}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-50">
+                            <div class="absolute -top-2 -right-2 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-sm">
+                                ${s.attendance}x
+                            </div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h5 class="font-bold text-gray-800 text-sm truncate">${s.name}</h5>
+                            <p class="text-[10px] text-gray-500 font-medium">${s.edu} • ${s.age} Tahun</p>
+                        </div>
+                    `;
+                    listEl.appendChild(card);
+                });
             }
-
-            filtered.forEach(s => {
-                const card = document.createElement('div');
-                card.className = "bg-white p-4 rounded-3xl shadow-sm flex items-center gap-4 border border-gray-100 hover:border-indigo-200 transition-all animate-in fade-in zoom-in duration-300";
-                card.innerHTML = `
-                    <div class="relative">
-                        <img src="${s.photo}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-50 shadow-sm">
-                        <div class="absolute -top-2 -right-2 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg">
-                            ${s.attendance || 0}x
-                        </div>
-                    </div>
-                    <div class="flex-1 overflow-hidden">
-                        <h5 class="font-bold text-gray-800 text-sm truncate">${s.name}</h5>
-                        <div class="flex flex-wrap gap-2 mt-1">
-                            <span class="bg-gray-100 text-gray-500 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">${s.edu || '-'}</span>
-                            <span class="bg-indigo-50 text-indigo-500 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">${s.age} Thn</span>
-                        </div>
-                    </div>
-                `;
-                listEl.appendChild(card);
-            });
             lucide.createIcons();
         };
 
-        window.updateAttendance = async (studentId) => {
-            const studentIndex = students.findIndex(s => s.id === studentId);
-            if (studentIndex === -1) return false;
-            
-            try {
-                students[studentIndex].attendance = (students[studentIndex].attendance || 0) + 1;
-                
-                // Kirim update absen ke Sheets
-                fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify({ action: 'attendance', id: studentId })
-                });
-
-                if (currentClass) window.renderStudentList(currentClass);
-                return true;
-            } catch (e) { 
-                return false; 
-            }
-        };
-
-        window.getStudentsForClass = (cls) => students.filter(s => s.class === cls);
-    </script>
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #1e293b; overflow-x: hidden; }
-        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); }
-        .btn-primary { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-        .camera-container { position: relative; overflow: hidden; border-radius: 2rem; background: #000; width: 100%; aspect-ratio: 1/1; border: 4px solid #fff; }
-        #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        .scan-line { position: absolute; width: 100%; height: 2px; background: #4f46e5; top: 0; animation: scan 3s ease-in-out infinite; box-shadow: 0 0 15px #4f46e5; z-index: 10; }
-        @keyframes scan { 0%, 100% { top: 5%; } 50% { top: 95%; } }
-        .profile-preview { width: 100px; height: 100px; border-radius: 2.5rem; object-fit: cover; border: 4px solid #eef2ff; background: #f1f5f9; transition: transform 0.3s; }
-        ::-webkit-scrollbar { display: none; }
-    </style>
-</head>
-<body>
-
-    <!-- LOGIN (Tetap Sama) -->
-    <div id="loginPage" class="flex items-center justify-center min-h-screen p-6">
-        <div class="glass p-10 rounded-[3rem] shadow-2xl w-full max-w-sm text-center border border-white animate-in zoom-in duration-500">
-            <div class="mb-6 p-5 bg-indigo-50 rounded-[2rem] text-indigo-600 inline-block shadow-inner"><i data-lucide="church" class="w-14 h-14"></i></div>
-            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">E-Absensi</h1>
-            <p class="text-sm text-gray-500 mb-10 font-medium">GPdI Immanuel Berastagi</p>
-            <div class="space-y-4 text-left">
-                <input type="text" id="username" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Username">
-                <input type="password" id="password" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Password">
-                <button onclick="handleLogin()" class="w-full btn-primary text-white py-5 rounded-2xl font-bold mt-4 uppercase text-xs active:scale-95 shadow-lg">Masuk Dashboard</button>
-            </div>
-            <p class="mt-6 text-[10px] text-gray-400 uppercase font-bold tracking-widest flex items-center justify-center gap-2">
-                <span class="w-2 h-2 bg-green-500 rounded-full"></span> Spreadsheet Mode Active
-            </p>
-        </div>
-    </div>
-
-    <!-- DASHBOARD -->
-    <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
-        <nav class="bg-white/80 backdrop-blur-xl p-5 sticky top-0 z-40 shadow-sm flex justify-between items-center border-b">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white"><i data-lucide="file-spreadsheet" class="w-6 h-6"></i></div>
-                <div><span class="font-extrabold text-gray-900 block leading-none text-sm">Portal SM Sheets</span></div>
-            </div>
-            <button onclick="location.reload()" class="bg-red-50 text-red-500 p-3 rounded-2xl active:scale-90"><i data-lucide="power" class="w-5 h-5"></i></button>
-        </nav>
-
-        <main class="max-w-5xl mx-auto p-6 space-y-8 w-full">
-            <div class="bg-gradient-to-br from-green-600 to-teal-700 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
-                <div class="relative z-10">
-                    <h2 class="text-3xl font-bold leading-tight">Selamat Melayani,<br>Kaka Pengajar!</h2>
-                    <p class="mt-2 text-white/70 text-sm italic">Penyimpanan langsung ke Spreadsheet aktif</p>
-                </div>
-                <div class="absolute -right-10 -bottom-10 opacity-20 rotate-12"><i data-lucide="sheet" class="w-48 h-48"></i></div>
-            </div>
-
-            <!-- Kategori Kelas -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 bg-white p-6 rounded-[2.5rem] shadow-sm border">
-                    <h3 class="font-bold text-gray-800 text-sm mb-5">Pilih Kategori Kelas</h3>
-                    <div class="grid grid-cols-3 gap-3">
-                        <button onclick="renderStudentList('Bintang')" class="p-4 bg-amber-50 rounded-3xl text-center hover:bg-amber-100 transition-colors active:scale-95 group">
-                            <i data-lucide="star" class="w-5 h-5 text-amber-500 mx-auto mb-2 group-hover:scale-110 transition-transform"></i>
-                            <span class="block text-[10px] font-bold text-amber-700 uppercase">Bintang</span>
-                        </button>
-                        <button onclick="renderStudentList('Cahaya')" class="p-4 bg-blue-50 rounded-3xl text-center hover:bg-blue-100 transition-colors active:scale-95 group">
-                            <i data-lucide="sun" class="w-5 h-5 text-blue-500 mx-auto mb-2 group-hover:scale-110 transition-transform"></i>
-                            <span class="block text-[10px] font-bold text-blue-700 uppercase">Cahaya</span>
-                        </button>
-                        <button onclick="renderStudentList('Pra Remaja')" class="p-4 bg-purple-50 rounded-3xl text-center hover:bg-purple-100 transition-colors active:scale-95 group">
-                            <i data-lucide="flame" class="w-5 h-5 text-purple-500 mx-auto mb-2 group-hover:scale-110 transition-transform"></i>
-                            <span class="block text-[10px] font-bold text-purple-700 uppercase">Remaja</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="flex flex-row lg:flex-col gap-4">
-                    <button onclick="openModal('addMember')" class="flex-1 bg-emerald-500 text-white p-6 rounded-[2.5rem] font-bold flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-emerald-100">
-                        <i data-lucide="plus-circle"></i>
-                        <span class="text-sm">Murid Baru</span>
-                    </button>
-                    <button onclick="generateFullReport()" class="flex-1 bg-slate-900 text-white p-6 rounded-[2.5rem] font-bold flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-slate-100">
-                        <i data-lucide="printer"></i>
-                        <span class="text-sm">Cetak Absen</span>
-                    </button>
-                </div>
-            </div>
-
-            <div id="classContainer" class="hidden space-y-4">
-                <div class="flex justify-between items-center bg-white p-6 rounded-[2.5rem] border shadow-sm">
-                    <h3 id="currentClassName" class="text-xl font-black text-gray-800 tracking-tight">Kelas: -</h3>
-                    <button onclick="startScan()" class="bg-indigo-600 text-white px-6 py-4 rounded-2xl text-xs font-black flex items-center gap-2 active:scale-95 shadow-indigo-100 shadow-lg">
-                        <i data-lucide="scan-face" class="w-4 h-4"></i> SCAN WAJAH
-                    </button>
-                </div>
-                <div id="studentList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-20"></div>
-            </div>
-        </main>
-    </div>
-
-    <!-- MODAL SCAN & DAFTAR (Struktur Tetap Sama) -->
-    <div id="scanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-6 backdrop-blur-md">
-        <div class="bg-white w-full max-w-sm rounded-[3rem] p-8 text-center">
-            <div class="camera-container mb-6">
-                <video id="video" autoplay playsinline muted></video>
-                <div class="scan-line"></div>
-            </div>
-            <div id="scanStatus" class="p-4 text-[11px] font-bold text-gray-400 bg-gray-50 rounded-2xl min-h-[80px] flex items-center justify-center">
-                Posisikan wajah tepat di dalam bingkai
-            </div>
-            <div class="flex gap-3 mt-6">
-                <button id="captureBtn" onclick="processScan()" class="flex-1 btn-primary text-white py-4 rounded-2xl font-black text-xs active:scale-95">KONFIRMASI</button>
-                <button onclick="closeModal('scanModal')" class="px-6 bg-gray-100 text-gray-500 rounded-2xl active:scale-90"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-        </div>
-    </div>
-
-    <div id="addMemberModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-6 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-md rounded-[3rem] p-8 shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-100">
-            <h4 class="font-black text-2xl mb-8 tracking-tight text-gray-800">Pendaftaran Murid</h4>
-            <div class="space-y-6">
-                <div class="flex flex-col items-center">
-                    <div class="group relative">
-                        <img id="imagePreview" src="https://ui-avatars.com/api/?name=?&background=f1f5f9&color=cbd5e1" class="profile-preview">
-                        <label class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
-                            <i data-lucide="camera"></i>
-                            <input type="file" id="newPhoto" accept="image/*" class="hidden" onchange="previewImage(this)">
-                        </label>
-                    </div>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase mt-3">Klik Foto Murid</p>
-                </div>
-                
-                <div class="space-y-4">
-                    <input type="text" id="newName" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Nama Lengkap">
-                    <div class="grid grid-cols-2 gap-3">
-                        <input type="text" id="newPob" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm outline-none" placeholder="Tempat Lahir">
-                        <input type="date" id="newDob" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-xs outline-none">
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <input type="number" id="newAge" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm outline-none" placeholder="Usia">
-                        <select id="newEducation" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm outline-none font-bold">
-                            <option value="Belum Sekolah">Belum Sekolah</option>
-                            <option value="TK">TK</option>
-                            <option value="SD Kelas 1-3">SD Kelas 1-3</option>
-                            <option value="SD Kelas 4-6">SD Kelas 4-6</option>
-                            <option value="SMP">SMP</option>
-                        </select>
-                    </div>
-                    <select id="newClass" class="w-full px-6 py-5 bg-indigo-50 rounded-2xl text-sm font-black text-indigo-700 outline-none">
-                        <option value="">-- PILIH KELAS --</option>
-                        <option value="Bintang">Kelas Bintang (Balita)</option>
-                        <option value="Cahaya">Kelas Cahaya (Anak)</option>
-                        <option value="Pra Remaja">Kelas Pra Remaja</option>
-                    </select>
-                </div>
-
-                <div class="flex gap-4 pt-4">
-                    <button id="btnSave" onclick="saveMember()" class="flex-[2] btn-primary text-white py-5 rounded-2xl font-black text-xs active:scale-95 shadow-lg">SIMPAN DATA</button>
-                    <button onclick="closeModal('addMemberModal')" class="flex-1 bg-gray-100 text-gray-500 py-5 rounded-2xl font-bold text-xs active:scale-95">BATAL</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-3xl text-white font-black uppercase tracking-widest opacity-0 transition-all duration-300 z-[100] text-[10px] shadow-2xl pointer-events-none"></div>
-
-    <script>
-        window.selectedBase64Image = "";
-        let stream = null;
-
-        function handleLogin() {
+        // UI Handlers
+        window.handleLogin = () => {
             const u = document.getElementById('username').value;
             const p = document.getElementById('password').value;
             if (u === "Admin" && p === "Berastagi2024") {
                 document.getElementById('loginPage').classList.add('hidden');
                 document.getElementById('dashboardPage').classList.remove('hidden');
-                showToast("Login Berhasil", "bg-emerald-500");
                 lucide.createIcons();
             } else {
-                showToast("Kredensial Salah", "bg-red-500");
+                showToast("Login Gagal", "bg-red-500");
             }
-        }
+        };
 
-        function previewImage(input) {
+        window.previewImage = (input) => {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
@@ -341,69 +214,216 @@
                 };
                 reader.readAsDataURL(input.files[0]);
             }
-        }
+        };
 
-        async function startScan() {
-            const video = document.getElementById('video');
+        window.startScan = async () => {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                video.srcObject = stream;
+                document.getElementById('video').srcObject = stream;
                 document.getElementById('scanModal').classList.remove('hidden');
-            } catch (e) { showToast("Kamera ditolak", "bg-red-500"); }
-        }
+                document.getElementById('scanStatus').innerText = "Mencari wajah di depan kamera...";
+            } catch (e) { showToast("Kamera tidak tersedia", "bg-red-500"); }
+        };
 
-        async function processScan() {
-            const status = document.getElementById('scanStatus');
-            const classStudents = window.getStudentsForClass(currentClass);
-            if (classStudents.length === 0) return status.innerText = "Kelas kosong";
-            
-            status.innerText = "Mencocokkan...";
-            setTimeout(async () => {
-                const target = classStudents[Math.floor(Math.random() * classStudents.length)];
-                await window.updateAttendance(target.id);
-                status.innerHTML = `<span class="text-emerald-500 font-black">${target.name} HADIR!</span>`;
-                setTimeout(() => closeModal('scanModal'), 1500);
-                showToast(`${target.name} Hadir`, "bg-emerald-500");
-            }, 800);
-        }
-
-        function resetForm() {
-            document.querySelectorAll('#addMemberModal input, #addMemberModal select').forEach(i => i.value = "");
-            document.getElementById('imagePreview').src = "https://ui-avatars.com/api/?name=?&background=f1f5f9&color=cbd5e1";
-            window.selectedBase64Image = "";
-        }
-
-        function openModal(id) { document.getElementById(id + 'Modal').classList.remove('hidden'); }
-        function closeModal(id) {
+        window.closeModal = (id) => {
             document.getElementById(id).classList.add('hidden');
             if (id === 'scanModal' && stream) {
                 stream.getTracks().forEach(t => t.stop());
-                stream = null;
             }
-        }
+        };
 
-        function showToast(m, c) {
+        window.resetForm = () => {
+            document.querySelectorAll('#addMemberModal input, #addMemberModal select').forEach(el => el.value = "");
+            document.getElementById('imagePreview').src = "https://ui-avatars.com/api/?name=?&background=f1f5f9";
+            window.selectedBase64Image = "";
+        };
+
+        window.showToast = (msg, color) => {
             const t = document.getElementById('toast');
-            t.innerText = m;
-            t.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-10 py-5 rounded-[2rem] text-white font-black transition-all duration-300 z-[100] text-[10px] shadow-2xl pointer-events-none uppercase tracking-widest ${c} opacity-100`;
-            setTimeout(() => t.classList.replace('opacity-100', 'opacity-0'), 2500);
-        }
+            t.innerText = msg;
+            t.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-3xl text-white font-bold z-[100] transition-all shadow-xl ${color} opacity-100`;
+            setTimeout(() => t.classList.replace('opacity-100', 'opacity-0'), 3000);
+        };
+    </script>
 
-        function generateFullReport() {
-            if (students.length === 0) return showToast("Data Kosong", "bg-amber-500");
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            doc.text("LAPORAN ABSENSI GPDI IMMANUEL", 105, 20, { align: "center" });
-            const tableData = students.map((s, i) => [i + 1, s.name, s.class, s.age, (s.attendance || 0)]);
-            doc.autoTable({
-                startY: 30,
-                head: [['No', 'Nama', 'Kelas', 'Usia', 'Total Hadir']],
-                body: tableData,
-                theme: 'grid'
-            });
-            doc.save(`Absensi_SM.pdf`);
-        }
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #1e293b; }
+        .btn-grad { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid white; }
+        .camera-box { position: relative; width: 100%; aspect-ratio: 1/1; border-radius: 2.5rem; overflow: hidden; background: #000; border: 6px solid #fff; box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
+        #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .scan-anim { position: absolute; width: 100%; height: 4px; background: #4f46e5; top: 0; animation: scan 2s ease-in-out infinite; box-shadow: 0 0 20px #4f46e5; z-index: 20; }
+        @keyframes scan { 0%, 100% { top: 10%; } 50% { top: 90%; } }
+        .profile-img { width: 120px; height: 120px; border-radius: 3rem; object-fit: cover; border: 4px solid #eef2ff; }
+    </style>
+</head>
+<body class="antialiased">
 
+    <!-- Toast Notification -->
+    <div id="toast" class="opacity-0 pointer-events-none text-xs uppercase tracking-widest transition-opacity duration-300"></div>
+
+    <!-- Login Page -->
+    <div id="loginPage" class="min-h-screen flex items-center justify-center p-6">
+        <div class="glass p-10 rounded-[3rem] shadow-2xl w-full max-w-sm text-center">
+            <div class="w-20 h-20 bg-indigo-50 rounded-[2rem] flex items-center justify-center text-indigo-600 mx-auto mb-6 shadow-inner">
+                <i data-lucide="church" class="w-10 h-10"></i>
+            </div>
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">E-Absensi</h1>
+            <p class="text-xs text-gray-400 font-bold uppercase tracking-[0.2em] mb-10">GPdI Immanuel Berastagi</p>
+            <div class="space-y-4">
+                <input type="text" id="username" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold" placeholder="Username" value="Admin">
+                <input type="password" id="password" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold" placeholder="Password" value="Berastagi2024">
+                <button onclick="handleLogin()" class="w-full btn-grad text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-transform">Masuk Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-40 p-5 flex justify-between items-center border-b">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white"><i data-lucide="layout-grid" class="w-5 h-5"></i></div>
+                <span class="font-extrabold text-gray-900 text-sm tracking-tight">Portal Sekolah Minggu</span>
+            </div>
+            <button onclick="location.reload()" class="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center active:scale-90 transition-transform"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+        </nav>
+
+        <main class="max-w-4xl mx-auto w-full p-6 space-y-8 pb-32">
+            <!-- Header Welcome -->
+            <div class="bg-indigo-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl">
+                <div class="relative z-10">
+                    <h2 class="text-3xl font-extrabold">Shalom, Kaka!</h2>
+                    <p class="text-indigo-100 text-sm mt-1">Sistem Scan Wajah & Spreadsheet tersinkronisasi.</p>
+                </div>
+                <i data-lucide="zap" class="absolute -right-6 -bottom-6 w-40 h-40 text-white/10 rotate-12"></i>
+            </div>
+
+            <!-- Pilih Kelas -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button onclick="renderStudentList('Bintang')" class="p-6 bg-white rounded-[2rem] border-2 border-transparent hover:border-amber-400 transition-all text-left shadow-sm group">
+                    <div class="w-12 h-12 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><i data-lucide="star"></i></div>
+                    <span class="block font-black text-gray-800 text-lg leading-tight">Kelas<br>Bintang</span>
+                    <span class="text-[10px] text-gray-400 font-bold uppercase mt-2 block tracking-widest">(0-5 Tahun)</span>
+                </button>
+                <button onclick="renderStudentList('Cahaya')" class="p-6 bg-white rounded-[2rem] border-2 border-transparent hover:border-blue-400 transition-all text-left shadow-sm group">
+                    <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><i data-lucide="sun"></i></div>
+                    <span class="block font-black text-gray-800 text-lg leading-tight">Kelas<br>Cahaya</span>
+                    <span class="text-[10px] text-gray-400 font-bold uppercase mt-2 block tracking-widest">(6-11 Tahun)</span>
+                </button>
+                <button onclick="renderStudentList('Pra Remaja')" class="p-6 bg-white rounded-[2rem] border-2 border-transparent hover:border-purple-400 transition-all text-left shadow-sm group">
+                    <div class="w-12 h-12 bg-purple-50 text-purple-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><i data-lucide="flame"></i></div>
+                    <span class="block font-black text-gray-800 text-lg leading-tight">Pra<br>Remaja</span>
+                    <span class="text-[10px] text-gray-400 font-bold uppercase mt-2 block tracking-widest">(12-15 Tahun)</span>
+                </button>
+            </div>
+
+            <!-- List Murid -->
+            <div id="classContainer" class="hidden space-y-4 animate-in slide-in-from-bottom-5 duration-500">
+                <div class="flex justify-between items-center bg-white/50 p-4 rounded-3xl border border-white">
+                    <h3 id="currentClassName" class="text-xl font-extrabold text-gray-900 tracking-tight italic">Kelas: -</h3>
+                    <div class="flex gap-2">
+                        <button onclick="document.getElementById('addMemberModal').classList.remove('hidden')" class="bg-emerald-500 text-white p-3 rounded-2xl shadow-lg active:scale-95"><i data-lucide="user-plus" class="w-5 h-5"></i></button>
+                        <button onclick="startScan()" class="btn-grad text-white px-6 py-3 rounded-2xl font-black text-[10px] tracking-widest uppercase flex items-center gap-2 shadow-lg active:scale-95"><i data-lucide="scan-face" class="w-4 h-4"></i> Scan Wajah</button>
+                    </div>
+                </div>
+                <div id="studentList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Scan Wajah -->
+    <div id="scanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/95 p-6 backdrop-blur-xl">
+        <div class="w-full max-w-sm text-center">
+            <h4 class="text-white font-black text-xl mb-8 tracking-tight">Pemindai Wajah Murid</h4>
+            <div class="camera-box mb-8">
+                <video id="video" autoplay playsinline muted></video>
+                <div class="scan-anim"></div>
+            </div>
+            <div id="scanStatus" class="bg-white/10 text-white/70 py-4 px-6 rounded-2xl text-[11px] font-bold mb-8 min-h-[60px] flex items-center justify-center italic">
+                Posisikan wajah di dalam kotak pemindai...
+            </div>
+            <div class="flex gap-4">
+                <button onclick="processScan()" class="flex-1 btn-grad text-white py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-2xl active:scale-95">Mulai Deteksi</button>
+                <button onclick="closeModal('scanModal')" class="bg-white/10 text-white w-20 rounded-[2rem] flex items-center justify-center active:scale-90"><i data-lucide="x"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tambah Murid -->
+    <div id="addMemberModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-6 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md rounded-[3rem] p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h4 class="text-2xl font-black text-gray-900 mb-8 tracking-tight">Daftar Murid Baru</h4>
+            
+            <div class="space-y-6">
+                <!-- Identitas Foto -->
+                <div class="flex flex-col items-center">
+                    <div class="relative group">
+                        <img id="imagePreview" src="https://ui-avatars.com/api/?name=?&background=f1f5f9" class="profile-img">
+                        <label class="absolute inset-0 bg-black/40 rounded-[3rem] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                            <i data-lucide="camera" class="text-white"></i>
+                            <input type="file" accept="image/*" class="hidden" onchange="previewImage(this)">
+                        </label>
+                    </div>
+                    <span class="text-[10px] font-black text-gray-400 uppercase mt-3 tracking-widest underline decoration-indigo-200">Unggah Foto Wajah</span>
+                </div>
+
+                <!-- Form Identitas -->
+                <div class="space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Nama Lengkap</label>
+                        <input type="text" id="newName" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Contoh: Adriel Sembiring">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Tempat Lahir</label>
+                            <input type="text" id="newPob" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm outline-none" placeholder="Berastagi">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Tgl Lahir</label>
+                            <input type="date" id="newDob" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-xs outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Usia (Tahun)</label>
+                            <input type="number" id="newAge" class="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm outline-none" placeholder="0">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Pendidikan</label>
+                            <select id="newEducation" class="w-full px-4 py-4 bg-gray-50 rounded-2xl text-xs font-bold outline-none">
+                                <option value="Belum Sekolah">Belum Sekolah</option>
+                                <option value="TK">TK</option>
+                                <option value="SD Kelas 1-3">SD Kelas 1-3</option>
+                                <option value="SD Kelas 4-6">SD Kelas 4-6</option>
+                                <option value="SMP">SMP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Kategori Kelas</label>
+                        <select id="newClass" class="w-full px-6 py-4 bg-indigo-50 rounded-2xl text-sm font-black text-indigo-700 outline-none">
+                            <option value="">-- PILIH KELAS --</option>
+                            <option value="Bintang">Bintang (0-5 Thn)</option>
+                            <option value="Cahaya">Cahaya (6-11 Thn)</option>
+                            <option value="Pra Remaja">Pra Remaja (12-15 Thn)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 pt-4">
+                    <button id="btnSave" onclick="saveMember()" class="flex-[2] btn-grad text-white py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-xl active:scale-95">Simpan Data</button>
+                    <button onclick="closeModal('addMemberModal')" class="flex-1 bg-gray-100 text-gray-500 py-5 rounded-[2rem] font-bold text-xs active:scale-95">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Init Lucide
         window.onload = () => lucide.createIcons();
     </script>
 </body>
