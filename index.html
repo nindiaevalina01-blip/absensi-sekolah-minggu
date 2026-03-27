@@ -3,74 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Absensi GPdI Immanuel (Fast Sync)</title>
+    <title>E-Absensi GPdI Immanuel (Spreadsheet Sync)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'absensi-sm-immanuel';
-
+    <script>
+        // URL Google Apps Script Anda
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjkxnS02CSS8IfJPD-AVWsJkpL5XqUnRf9-r1SKYXR_sqKQteQWrFBCzsEX2mDPrC5/exec";
 
+        // State lokal untuk menggantikan Firestore
         let students = [];
         let currentClass = "";
-        let currentUser = null;
 
-        async function initAuth() {
+        // Fungsi Memuat Data dari Spreadsheet (Opsional jika ingin sinkronisasi dua arah)
+        async function loadDataFromSheets() {
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
+                const response = await fetch(SCRIPT_URL + "?action=read");
+                const result = await response.json();
+                if (result.status === "success") {
+                    students = result.data;
+                    if (currentClass) window.renderStudentList(currentClass);
                 }
-            } catch (error) {
-                console.error("Auth Error:", error);
+            } catch (e) {
+                console.log("Gagal memuat data awal, menggunakan cache lokal.");
             }
-        }
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                listenToStudents();
-            }
-        });
-
-        initAuth();
-
-        function listenToStudents() {
-            if (!currentUser) return;
-            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'students');
-            onSnapshot(colRef, (snapshot) => {
-                students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (currentClass) window.renderStudentList(currentClass);
-            }, (error) => {
-                console.error("Firestore Error:", error);
-            });
-        }
-
-        // FUNGSI BACKGROUND SYNC (Tanpa Await di UI)
-        function syncToGoogleSheetsBackground(data) {
-            // Kita gunakan sendBeacon atau fetch tanpa await agar tidak menghalangi UI
-            fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors', 
-                body: JSON.stringify(data)
-            }).catch(e => console.log("Background sync failed, but data is safe in Cloud Firestore"));
         }
 
         window.saveMember = async () => {
-            if (!currentUser) return window.showToast("Sesi tidak valid", "bg-red-500");
-
             const name = document.getElementById('newName').value.trim();
             const cls = document.getElementById('newClass').value;
             const photo = window.selectedBase64Image;
@@ -81,7 +42,7 @@
 
             const btn = document.getElementById('btnSave');
             btn.disabled = true;
-            btn.innerText = "MENGIRIM...";
+            btn.innerText = "MENYIMPAN...";
 
             const id = Date.now().toString();
             const studentData = {
@@ -94,26 +55,30 @@
                 class: cls,
                 attendance: 0,
                 photo: photo,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toLocaleString('id-ID')
             };
 
             try {
-                // STRATEGI: Simpan ke Firestore dulu (Sangat Cepat)
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id), {
-                    ...studentData,
-                    createdAt: serverTimestamp()
+                // KIRIM LANGSUNG KE GOOGLE SHEETS
+                // Menggunakan fetch dengan mode 'no-cors' untuk kecepatan maksimal (Fire and Forget)
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(studentData)
                 });
 
-                // Jalankan sinkronisasi Sheets di background (TIDAK DITUNGGU/NO AWAIT)
-                syncToGoogleSheetsBackground(studentData);
-
-                // Langsung tutup modal dan beri feedback
-                window.showToast(`${name} berhasil didaftarkan!`, "bg-emerald-500");
+                // Update state lokal agar UI langsung terupdate tanpa menunggu refresh
+                students.push(studentData);
+                
+                window.showToast(`${name} berhasil disimpan ke Spreadsheet!`, "bg-emerald-500");
                 window.closeModal('addMemberModal');
                 window.resetForm();
+                if (currentClass === cls) window.renderStudentList(cls);
             } catch (e) {
                 console.error("Save Error:", e);
-                window.showToast("Gagal menyimpan", "bg-red-500");
+                window.showToast("Gagal terhubung ke Spreadsheet", "bg-red-500");
             } finally {
                 btn.disabled = false;
                 btn.innerText = "SIMPAN DATA";
@@ -159,11 +124,6 @@
                             <span class="bg-indigo-50 text-indigo-500 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">${s.age} Thn</span>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-1">
-                        <button onclick="deleteStudent('${s.id}')" class="text-gray-300 hover:text-red-500 p-1 transition-colors">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    </div>
                 `;
                 listEl.appendChild(card);
             });
@@ -171,30 +131,23 @@
         };
 
         window.updateAttendance = async (studentId) => {
-            if (!currentUser) return false;
-            const student = students.find(s => s.id === studentId);
-            if (!student) return false;
+            const studentIndex = students.findIndex(s => s.id === studentId);
+            if (studentIndex === -1) return false;
             
             try {
-                const newCount = (student.attendance || 0) + 1;
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId), {
-                    attendance: newCount
+                students[studentIndex].attendance = (students[studentIndex].attendance || 0) + 1;
+                
+                // Kirim update absen ke Sheets
+                fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify({ action: 'attendance', id: studentId })
                 });
+
+                if (currentClass) window.renderStudentList(currentClass);
                 return true;
             } catch (e) { 
-                console.error("Update Attendance Error:", e);
                 return false; 
-            }
-        };
-
-        window.deleteStudent = async (id) => {
-            if (!currentUser) return;
-            if (!confirm("Hapus data anak ini secara permanen?")) return;
-            try { 
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id)); 
-                window.showToast("Data dihapus", "bg-slate-700");
-            } catch (e) {
-                window.showToast("Gagal menghapus", "bg-red-500");
             }
         };
 
@@ -211,13 +164,12 @@
         .scan-line { position: absolute; width: 100%; height: 2px; background: #4f46e5; top: 0; animation: scan 3s ease-in-out infinite; box-shadow: 0 0 15px #4f46e5; z-index: 10; }
         @keyframes scan { 0%, 100% { top: 5%; } 50% { top: 95%; } }
         .profile-preview { width: 100px; height: 100px; border-radius: 2.5rem; object-fit: cover; border: 4px solid #eef2ff; background: #f1f5f9; transition: transform 0.3s; }
-        .profile-preview:hover { transform: scale(1.05); }
         ::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
 
-    <!-- LOGIN -->
+    <!-- LOGIN (Tetap Sama) -->
     <div id="loginPage" class="flex items-center justify-center min-h-screen p-6">
         <div class="glass p-10 rounded-[3rem] shadow-2xl w-full max-w-sm text-center border border-white animate-in zoom-in duration-500">
             <div class="mb-6 p-5 bg-indigo-50 rounded-[2rem] text-indigo-600 inline-block shadow-inner"><i data-lucide="church" class="w-14 h-14"></i></div>
@@ -229,7 +181,7 @@
                 <button onclick="handleLogin()" class="w-full btn-primary text-white py-5 rounded-2xl font-bold mt-4 uppercase text-xs active:scale-95 shadow-lg">Masuk Dashboard</button>
             </div>
             <p class="mt-6 text-[10px] text-gray-400 uppercase font-bold tracking-widest flex items-center justify-center gap-2">
-                <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> Cloud Sync Active
+                <span class="w-2 h-2 bg-green-500 rounded-full"></span> Spreadsheet Mode Active
             </p>
         </div>
     </div>
@@ -238,21 +190,22 @@
     <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
         <nav class="bg-white/80 backdrop-blur-xl p-5 sticky top-0 z-40 shadow-sm flex justify-between items-center border-b">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white"><i data-lucide="cloud-lightning" class="w-6 h-6"></i></div>
-                <div><span class="font-extrabold text-gray-900 block leading-none text-sm">Portal SM Sync</span></div>
+                <div class="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white"><i data-lucide="file-spreadsheet" class="w-6 h-6"></i></div>
+                <div><span class="font-extrabold text-gray-900 block leading-none text-sm">Portal SM Sheets</span></div>
             </div>
             <button onclick="location.reload()" class="bg-red-50 text-red-500 p-3 rounded-2xl active:scale-90"><i data-lucide="power" class="w-5 h-5"></i></button>
         </nav>
 
         <main class="max-w-5xl mx-auto p-6 space-y-8 w-full">
-            <div class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
+            <div class="bg-gradient-to-br from-green-600 to-teal-700 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
                 <div class="relative z-10">
                     <h2 class="text-3xl font-bold leading-tight">Selamat Melayani,<br>Kaka Pengajar!</h2>
-                    <p class="mt-2 text-white/70 text-sm italic">Cloud database siap digunakan</p>
+                    <p class="mt-2 text-white/70 text-sm italic">Penyimpanan langsung ke Spreadsheet aktif</p>
                 </div>
-                <div class="absolute -right-10 -bottom-10 opacity-20 rotate-12"><i data-lucide="shield-check" class="w-48 h-48"></i></div>
+                <div class="absolute -right-10 -bottom-10 opacity-20 rotate-12"><i data-lucide="sheet" class="w-48 h-48"></i></div>
             </div>
 
+            <!-- Kategori Kelas -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 bg-white p-6 rounded-[2.5rem] shadow-sm border">
                     <h3 class="font-bold text-gray-800 text-sm mb-5">Pilih Kategori Kelas</h3>
@@ -296,7 +249,7 @@
         </main>
     </div>
 
-    <!-- MODAL SCAN -->
+    <!-- MODAL SCAN & DAFTAR (Struktur Tetap Sama) -->
     <div id="scanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-6 backdrop-blur-md">
         <div class="bg-white w-full max-w-sm rounded-[3rem] p-8 text-center">
             <div class="camera-container mb-6">
@@ -313,10 +266,9 @@
         </div>
     </div>
 
-    <!-- MODAL DAFTAR -->
     <div id="addMemberModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-6 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-md rounded-[3rem] p-8 shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-100 animate-in slide-in-from-bottom-10 duration-300">
-            <h4 class="font-black text-2xl mb-8 tracking-tight">Pendaftaran Murid</h4>
+        <div class="bg-white w-full max-w-md rounded-[3rem] p-8 shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-100">
+            <h4 class="font-black text-2xl mb-8 tracking-tight text-gray-800">Pendaftaran Murid</h4>
             <div class="space-y-6">
                 <div class="flex flex-col items-center">
                     <div class="group relative">
@@ -326,7 +278,7 @@
                             <input type="file" id="newPhoto" accept="image/*" class="hidden" onchange="previewImage(this)">
                         </label>
                     </div>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase mt-3">Klik untuk Unggah Foto</p>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase mt-3">Klik Foto Murid</p>
                 </div>
                 
                 <div class="space-y-4">
@@ -421,10 +373,7 @@
             window.selectedBase64Image = "";
         }
 
-        function openModal(id) { 
-            document.getElementById(id + 'Modal').classList.remove('hidden'); 
-        }
-        
+        function openModal(id) { document.getElementById(id + 'Modal').classList.remove('hidden'); }
         function closeModal(id) {
             document.getElementById(id).classList.add('hidden');
             if (id === 'scanModal' && stream) {
@@ -444,15 +393,15 @@
             if (students.length === 0) return showToast("Data Kosong", "bg-amber-500");
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            doc.text("LAPORAN ABSENSI", 105, 20, { align: "center" });
+            doc.text("LAPORAN ABSENSI GPDI IMMANUEL", 105, 20, { align: "center" });
             const tableData = students.map((s, i) => [i + 1, s.name, s.class, s.age, (s.attendance || 0)]);
             doc.autoTable({
                 startY: 30,
-                head: [['No', 'Nama', 'Kelas', 'Usia', 'Hadir']],
+                head: [['No', 'Nama', 'Kelas', 'Usia', 'Total Hadir']],
                 body: tableData,
                 theme: 'grid'
             });
-            doc.save(`Absensi.pdf`);
+            doc.save(`Absensi_SM.pdf`);
         }
 
         window.onload = () => lucide.createIcons();
