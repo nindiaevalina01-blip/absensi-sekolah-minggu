@@ -3,21 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Absensi GPdI Immanuel (Barcode Scanner)</title>
+    <title>E-Absensi GPdI Immanuel (Enhanced)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Library untuk PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; overflow-x: hidden; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f4f7fa; overflow-x: hidden; }
         .btn-grad { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
         #reader { border-radius: 2rem; overflow: hidden; border: none !important; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @media print {
+            body * { visibility: hidden; }
+            #printArea, #printArea * { visibility: visible; }
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
     </style>
 </head>
 <body class="antialiased text-gray-800">
@@ -72,7 +80,7 @@
 
             <!-- Action Area -->
             <div class="flex justify-between items-center px-2">
-                <h2 class="text-lg font-black text-gray-800 uppercase italic">Kelas Sekolah Minggu</h2>
+                <h2 class="text-lg font-black text-gray-800 uppercase italic">Kategori Kelas</h2>
                 <button onclick="startScan()" class="btn-grad text-white px-6 py-3.5 rounded-2xl font-black text-[10px] tracking-widest uppercase flex items-center gap-3 shadow-xl shadow-indigo-200">
                     <i data-lucide="scan-line" class="w-5 h-5"></i> Scan Barcode
                 </button>
@@ -94,7 +102,7 @@
             </div>
 
             <div id="classContainer" class="hidden space-y-4">
-                <h3 id="currentClassName" class="text-xs font-black text-indigo-600 uppercase tracking-widest px-2">Kelas: -</h3>
+                <h3 id="currentClassName" class="text-xs font-black text-indigo-600 uppercase tracking-widest px-2">Kategori: -</h3>
                 <div id="studentList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </div>
 
@@ -102,8 +110,9 @@
             <section class="space-y-4 pt-6">
                 <div class="flex justify-between items-center px-2">
                     <h2 class="text-lg font-black text-gray-800 uppercase italic">Ringkasan Kehadiran</h2>
-                    <button onclick="downloadFullReport()" class="text-gray-500 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-                        <i data-lucide="download" class="w-4 h-4"></i> PDF
+                    <!-- Tombol PDF -->
+                    <button onclick="downloadRekapPDF()" class="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> Cetak PDF
                     </button>
                 </div>
                 <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
@@ -111,8 +120,8 @@
                         <thead class="bg-gray-50 border-b border-gray-100">
                             <tr>
                                 <th class="py-4 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Murid</th>
-                                <th class="py-4 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Kelas</th>
-                                <th class="py-4 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Hadir</th>
+                                <th class="py-4 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Kategori</th>
+                                <th class="py-4 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Total Hadir</th>
                             </tr>
                         </thead>
                         <tbody id="summaryTableBody" class="divide-y divide-gray-50 text-[11px]"></tbody>
@@ -124,40 +133,96 @@
 
     <!-- Modal Scan -->
     <div id="scanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-6 backdrop-blur-md">
-        <div class="w-full max-w-sm text-center">
+        <div class="w-full max-sm:max-w-xs text-center">
             <div id="reader" class="bg-white rounded-[2rem]"></div>
-            <div id="scanStatus" class="text-white mt-8 text-[10px] font-black uppercase tracking-widest">Arahkan Barcode</div>
+            <div id="scanStatus" class="text-white mt-8 text-[10px] font-black uppercase tracking-widest">Arahkan Barcode ke Kamera</div>
             <button onclick="closeModal('scanModal')" class="mt-8 text-white/50 text-[10px] font-bold uppercase tracking-widest underline">Batal</button>
         </div>
     </div>
 
-    <!-- Modal ID Card -->
+    <!-- Modal Detail Murid (ID CARD) -->
     <div id="cardModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-[280px] rounded-[3rem] shadow-2xl flex flex-col items-center p-8 text-center border border-indigo-100">
-            <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white mb-6">
-                <i data-lucide="church" class="w-6 h-6"></i>
+        <div id="printArea" class="bg-white w-full max-w-[400px] rounded-[2.5rem] shadow-2xl flex flex-col p-0 overflow-hidden border border-indigo-100">
+            <!-- Header Card -->
+            <div class="bg-indigo-600 p-6 text-white flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="church" class="w-5 h-5"></i>
+                    <span class="text-[9px] font-black uppercase tracking-tighter">GPdI Immanuel Berastagi</span>
+                </div>
+                <span id="cardIdText" class="text-[9px] font-bold opacity-80">IMN-000</span>
             </div>
-            <h2 id="cardName" class="font-black text-lg text-indigo-950 mb-1 italic">Nama Murid</h2>
-            <p id="cardIdText" class="text-[10px] font-bold text-gray-400 tracking-widest mb-4">IMN-000</p>
-            <div id="cardClass" class="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-black uppercase mb-8">KELAS -</div>
-            <div class="bg-white p-4 rounded-2xl border-2 border-dashed border-gray-100 mb-8 w-full flex justify-center">
-                <svg id="barcodeCanvas"></svg>
+
+            <div class="p-8">
+                <div class="flex gap-6 items-start">
+                    <!-- Foto Profil -->
+                    <div class="flex-shrink-0">
+                        <img id="cardPhoto" src="" alt="Profile" class="w-24 h-24 rounded-2xl bg-indigo-50 border-2 border-indigo-100 object-cover">
+                    </div>
+                    
+                    <!-- Biodata -->
+                    <div class="flex-1 space-y-3">
+                        <div>
+                            <p class="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Nama Lengkap</p>
+                            <h2 id="cardName" class="font-black text-lg text-indigo-950 leading-tight">Nama Murid</h2>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <p class="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Usia</p>
+                                <p id="cardAge" class="text-xs font-bold text-gray-700">- Tahun</p>
+                            </div>
+                            <div>
+                                <p class="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Kelas Sekolah</p>
+                                <p id="cardSchool" class="text-xs font-bold text-gray-700">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 flex items-center justify-between border-t border-dashed border-gray-100 pt-6">
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Kategori</p>
+                            <span id="cardClass" class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-black uppercase tracking-widest">KELAS</span>
+                        </div>
+                        <div>
+                            <p class="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Jumlah Kehadiran</p>
+                            <p id="cardAttendance" class="text-xl font-black text-indigo-600">0</p>
+                        </div>
+                    </div>
+                    <!-- Barcode Section -->
+                    <div class="text-center">
+                        <svg id="barcodeCanvas" class="max-w-[120px]"></svg>
+                        <p class="text-[8px] font-bold text-gray-300 mt-1">SCAN ME</p>
+                    </div>
+                </div>
             </div>
-            <button onclick="closeModal('cardModal')" class="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Tutup</button>
+
+            <div class="p-6 bg-gray-50 flex gap-3 no-print">
+                <button onclick="window.print()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Cetak ID Card
+                </button>
+                <button onclick="closeModal('cardModal')" class="flex-1 bg-white border border-gray-200 text-gray-500 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest">Tutup</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // GANTI URL DI BAWAH INI DENGAN URL DARI GOOGLE APPS SCRIPT ANDA
         const SCRIPT_URL = "ISI_DENGAN_URL_DEPLOYMENT_ANDA";
 
-        let students = [];
+        // MOCK DATA
+        let students = [
+            { id: "IMN-001", name: "Nindia", age: 7, school: "2 SD", class: "Cahaya", attendance: 12, photo: "https://api.dicebear.com/7.x/avataaars/svg?seed=Nindia" },
+            { id: "IMN-002", name: "Budi", age: 10, school: "5 SD", class: "Cahaya", attendance: 8, photo: "https://api.dicebear.com/7.x/avataaars/svg?seed=Budi" },
+            { id: "IMN-003", name: "Santi", age: 13, school: "1 SMP", class: "Pra Remaja", attendance: 15, photo: "https://api.dicebear.com/7.x/avataaars/svg?seed=Santi" }
+        ];
+
         let html5QrCode;
-        let currentClass = "";
+        let currentKategori = "";
 
         async function loadDataFromDatabase() {
-            if (SCRIPT_URL === "https://script.google.com/macros/s/AKfycbx2mXRVtXxdKMvKuqKvjqQYjEBX_xHAGSP-11UJkRtw07h6JGjzxCbD0XLOx5CpKfpVig/exec") {
-                showToast("URL Database Belum Diisi!", "bg-red-500");
+            if (!SCRIPT_URL || SCRIPT_URL.includes("ISI_DENGAN_URL")) {
+                showToast("Menggunakan Data Demo", "bg-amber-500");
+                updateUI();
                 return;
             }
             try {
@@ -175,27 +240,26 @@
             document.getElementById('statTotalMurid').innerText = students.length;
             document.getElementById('statTotalAbsensi').innerText = students.reduce((a, b) => a + Number(b.attendance), 0);
             renderSummary();
-            if(currentClass) renderStudentList(currentClass);
+            if(currentKategori) renderStudentList(currentKategori);
         }
 
-        function renderStudentList(className) {
-            currentClass = className;
+        function renderStudentList(kategoriName) {
+            currentKategori = kategoriName;
             const list = document.getElementById('studentList');
             document.getElementById('classContainer').classList.remove('hidden');
-            document.getElementById('currentClassName').innerText = "Kelas: " + className;
+            document.getElementById('currentClassName').innerText = "Kategori: " + kategoriName;
             list.innerHTML = "";
             
-            const filtered = students.filter(s => s.class === className);
+            const filtered = students.filter(s => s.class === kategoriName);
             filtered.forEach(s => {
                 const card = document.createElement('div');
-                card.className = "bg-white p-4 rounded-3xl shadow-sm flex items-center gap-4 border border-gray-100";
+                card.className = "bg-white p-4 rounded-3xl shadow-sm flex items-center gap-4 border border-gray-100 hover:shadow-md transition-shadow cursor-pointer";
+                card.onclick = () => showIDCard(s.id);
                 card.innerHTML = `
-                    <div class="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold" onclick="showIDCard('${s.id}')">
-                        ${s.name.charAt(0)}
-                    </div>
+                    <img src="${s.photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.name}`}" class="w-12 h-12 rounded-xl bg-indigo-50 object-cover border border-indigo-50">
                     <div class="flex-1">
                         <h5 class="font-bold text-gray-800 text-xs">${s.name}</h5>
-                        <p class="text-[9px] text-gray-400 font-bold">${s.id}</p>
+                        <p class="text-[9px] text-gray-400 font-bold tracking-tight">${s.school} • ${s.age} Thn</p>
                     </div>
                     <div class="text-right">
                         <span class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">${s.attendance}</span>
@@ -211,24 +275,68 @@
             [...students].sort((a,b) => b.attendance - a.attendance).forEach(s => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td class="py-3 px-4 font-bold text-gray-700">${s.name}</td>
-                    <td class="py-3 px-4 text-gray-400 font-bold uppercase">${s.class}</td>
-                    <td class="py-3 px-4 text-center font-black text-indigo-600">${s.attendance}</td>
+                    <td class="py-3 px-4">
+                        <span class="font-bold text-gray-700">${s.name}</span>
+                    </td>
+                    <td class="py-3 px-4 text-gray-400 font-bold uppercase text-[9px]">${s.class}</td>
+                    <td class="py-3 px-4 text-center font-black text-indigo-600 text-sm">${s.attendance}</td>
                 `;
                 body.appendChild(row);
             });
         }
 
+        function downloadRekapPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Judul PDF
+            doc.setFontSize(18);
+            doc.setTextColor(79, 70, 229); // Indigo color
+            doc.text("REKAP KEHADIRAN SEKOLAH MINGGU", 14, 20);
+            
+            doc.setFontSize(12);
+            doc.setTextColor(100);
+            doc.text("GPdI Immanuel Berastagi", 14, 28);
+            doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, 14, 35);
+            
+            // Siapkan Data Tabel
+            const tableData = students.map((s, index) => [
+                index + 1,
+                s.name,
+                s.age + " Thn",
+                s.school,
+                s.class,
+                s.attendance
+            ]);
+            
+            // Render Tabel
+            doc.autoTable({
+                startY: 45,
+                head: [['No', 'Nama Murid', 'Usia', 'Sekolah', 'Kategori', 'Total Hadir']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: [79, 70, 229] },
+                styles: { fontSize: 10, cellPadding: 3 },
+                columnStyles: {
+                    5: { halign: 'center', fontStyle: 'bold' }
+                }
+            });
+            
+            // Simpan PDF
+            doc.save(`Rekap_Absensi_GPdI_${new Date().toISOString().slice(0,10)}.pdf`);
+            showToast("PDF Berhasil Diunduh", "bg-emerald-500");
+        }
+
         function startScan() {
             document.getElementById('scanModal').classList.remove('hidden');
             html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+            html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, 
                 async (decodedText) => {
                     await html5QrCode.stop();
                     closeModal('scanModal');
                     processAttendance(decodedText);
                 }
-            );
+            ).catch(() => showToast("Gagal akses kamera", "bg-red-500"));
         }
 
         async function processAttendance(id) {
@@ -240,17 +348,19 @@
 
             try {
                 showToast(`Mencatat Hadir: ${student.name}`, "bg-indigo-500");
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ id: id })
-                });
+                if (SCRIPT_URL && !SCRIPT_URL.includes("ISI_DENGAN_URL")) {
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ id: id })
+                    });
+                }
                 
-                // Update Lokal agar cepat
                 student.attendance = Number(student.attendance) + 1;
                 updateUI();
                 showToast("ABSENSI BERHASIL!", "bg-emerald-500");
+                showIDCard(id);
             } catch (e) {
                 showToast("Gagal Menyimpan Data", "bg-red-500");
             }
@@ -259,11 +369,24 @@
         function showIDCard(id) {
             const s = students.find(x => x.id === id);
             if(!s) return;
+            
             document.getElementById('cardModal').classList.remove('hidden');
             document.getElementById('cardName').innerText = s.name;
             document.getElementById('cardIdText').innerText = s.id;
+            document.getElementById('cardAge').innerText = (s.age || '-') + " Tahun";
+            document.getElementById('cardSchool').innerText = s.school || '-';
             document.getElementById('cardClass').innerText = "KELAS " + s.class.toUpperCase();
-            JsBarcode("#barcodeCanvas", s.id, { format: "CODE128", width: 2, height: 60, displayValue: false });
+            document.getElementById('cardAttendance').innerText = s.attendance;
+            document.getElementById('cardPhoto').src = s.photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.name}`;
+            
+            JsBarcode("#barcodeCanvas", s.id, { 
+                format: "CODE128", 
+                width: 1.5, 
+                height: 40, 
+                displayValue: false,
+                margin: 0
+            });
+            lucide.createIcons();
         }
 
         function handleLogin() {
@@ -289,7 +412,9 @@
 
         function closeModal(id) {
             document.getElementById(id).classList.add('hidden');
-            if (id === 'scanModal' && html5QrCode) html5QrCode.stop().catch(() => {});
+            if (id === 'scanModal' && html5QrCode) {
+                html5QrCode.stop().catch(() => {});
+            }
         }
 
         window.onload = () => lucide.createIcons();
