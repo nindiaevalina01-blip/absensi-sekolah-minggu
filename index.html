@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Absensi GPdI Immanuel (Rekap & Fix)</title>
+    <title>E-Absensi GPdI Immanuel (Rekap & Guru Sign)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Library untuk PDF -->
@@ -75,7 +75,7 @@
                 <button onclick="startScan()" class="flex-1 btn-grad text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-3">
                     <i data-lucide="scan-line" class="w-5 h-5"></i> Scan Barcode Kehadiran
                 </button>
-                <button onclick="downloadRekapPDF()" class="btn-rekap text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-3">
+                <button onclick="openTeacherModal()" class="btn-rekap text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-3">
                     <i data-lucide="file-text" class="w-5 h-5"></i> Download Rekap PDF
                 </button>
             </div>
@@ -95,6 +95,24 @@
                 <div id="studentList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </div>
         </main>
+    </div>
+
+    <!-- Modal Input Nama Guru (Sebelum PDF) -->
+    <div id="teacherModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
+            <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
+                <i data-lucide="user-check" class="w-8 h-8"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-black uppercase tracking-tight">Nama Pengabsen</h3>
+                <p class="text-xs text-gray-500 font-medium">Masukkan nama guru yang bertugas hari ini</p>
+            </div>
+            <input type="text" id="teacherNameInput" class="w-full px-6 py-4 rounded-2xl bg-gray-50 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-center" placeholder="Nama Lengkap Guru">
+            <div class="flex gap-3">
+                <button onclick="closeModal('teacherModal')" class="flex-1 bg-gray-100 text-gray-500 py-4 rounded-2xl font-black text-[10px] uppercase">Batal</button>
+                <button onclick="downloadRekapPDF()" class="flex-1 btn-grad text-white py-4 rounded-2xl font-black text-[10px] uppercase">Download</button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal ID Card -->
@@ -149,54 +167,23 @@
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwQhCc_f1DJlSBYMNQzaetk5eUvNvCVDfWCn3BD69ypnm5tWFoWx2Ad5J0LLsIjxntsQ/exec";
 
         let students = [
-            { 
-                id: "IMN-001", 
-                name: "Eldo Desenta Purba", 
-                age:9, 
-                school: "3 SD", 
-                class: "Cahaya", 
-                attendance: 0, 
-                photo: "https://drive.google.com/file/d/1N2mWe7lwcrPFlGD9AKr5ywJQrlImpKSf/view?usp=sharing" 
-            },
-            { 
-                id: "IMN-002", 
-                name: "Fahlepta Surbakti", 
-                age: 9, 
-                school: "3 SD", 
-                class: "Cahaya", 
-                attendance: 0, 
-                photo: "https://drive.google.com/file/d/1tioPYfFwvohFegtc5Qdwu2loEWYmL9zw/view?usp=sharing" 
-            },
-            { 
-                id: "IMN-003", 
-                name: "Lexi Felicia", 
-                age: 12, 
-                school: "6 SD", 
-                class: "Cahaya", 
-                attendance: 0, 
-                photo: "https://drive.google.com/file/d/1gQjzjUrRzpPnbu9sTqOpU52zDJGNSvLe/view?usp=sharing" 
-            }
+            { id: "IMN-001", name: "Eldo Desenta Purba", age:9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1N2mWe7lwcrPFlGD9AKr5ywJQrlImpKSf/view?usp=sharing" },
+            { id: "IMN-002", name: "Fahlepta Surbakti", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1tioPYfFwvohFegtc5Qdwu2loEWYmL9zw/view?usp=sharing" },
+            { id: "IMN-003", name: "Lexi Felicia", age: 12, school: "6 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1gQjzjUrRzpPnbu9sTqOpU52zDJGNSvLe/view?usp=sharing" }
         ];
 
         let html5QrCode;
         let currentKategori = "";
 
         function getDirectDriveLink(url, studentName) {
-            if (!url || url.trim() === "") {
-                return `https://api.dicebear.com/7.x/avataaars/svg?seed=${studentName}`;
-            }
+            if (!url || url.trim() === "") return `https://api.dicebear.com/7.x/avataaars/svg?seed=${studentName}`;
             if (url.includes('drive.google.com')) {
                 let fileId = "";
                 try {
-                    if (url.includes('id=')) {
-                        fileId = url.split('id=')[1].split('&')[0];
-                    } else {
-                        fileId = url.split('/d/')[1].split('/')[0];
-                    }
+                    if (url.includes('id=')) fileId = url.split('id=')[1].split('&')[0];
+                    else fileId = url.split('/d/')[1].split('/')[0];
                     return `https://lh3.googleusercontent.com/u/0/d/${fileId}`;
-                } catch (e) {
-                    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${studentName}`;
-                }
+                } catch (e) { return `https://api.dicebear.com/7.x/avataaars/svg?seed=${studentName}`; }
             }
             return url;
         }
@@ -209,23 +196,13 @@
                 document.getElementById('dashboardPage').classList.remove('hidden');
                 lucide.createIcons();
                 updateUI();
-            } else {
-                showToast("Login Gagal!", "bg-red-500");
-            }
+            } else { showToast("Login Gagal!", "bg-red-500"); }
         }
 
         function updateUI() {
             document.getElementById('statTotalMurid').innerText = students.length;
-            
-            // MENGHITUNG ULANG TOTAL KEHADIRAN
-            const totalHadir = students.reduce((acc, curr) => {
-                const count = parseInt(curr.attendance) || 0;
-                return acc + count;
-            }, 0);
-            
+            const totalHadir = students.reduce((acc, curr) => acc + (parseInt(curr.attendance) || 0), 0);
             document.getElementById('statTotalAbsensi').innerText = totalHadir;
-            
-            // Perbarui daftar murid jika sedang melihat kategori tertentu
             if(currentKategori) renderStudentList(currentKategori);
         }
 
@@ -235,14 +212,11 @@
             document.getElementById('classContainer').classList.remove('hidden');
             document.getElementById('currentClassName').innerText = "Kategori: " + kategoriName;
             list.innerHTML = "";
-            
             const filtered = students.filter(s => s.class === kategoriName);
-            
             if(filtered.length === 0) {
                 list.innerHTML = `<p class="col-span-full text-center text-gray-400 py-10 text-xs font-bold">Belum ada murid di kelas ini.</p>`;
                 return;
             }
-
             filtered.forEach(s => {
                 const card = document.createElement('div');
                 card.className = "bg-white p-4 rounded-3xl shadow-sm flex items-center gap-4 border cursor-pointer hover:shadow-md transition-shadow";
@@ -262,99 +236,74 @@
         function showIDCard(id) {
             const s = students.find(x => x.id === id);
             if(!s) return;
-            
             document.getElementById('cardModal').classList.remove('hidden');
             document.getElementById('cardName').innerText = s.name;
             document.getElementById('cardIdText').innerText = s.id;
             document.getElementById('cardAge').innerText = (s.age || '-') + " Tahun";
             document.getElementById('cardAttendance').innerText = s.attendance + " Kali";
             document.getElementById('cardPhoto').src = getDirectDriveLink(s.photo, s.name);
-            
-            JsBarcode("#barcodeCanvas", s.id, { 
-                format: "CODE128", 
-                width: 2, 
-                height: 40, 
-                displayValue: false,
-                lineColor: "#4f46e5"
-            });
+            JsBarcode("#barcodeCanvas", s.id, { format: "CODE128", width: 2, height: 40, displayValue: false, lineColor: "#4f46e5" });
         }
 
         async function processAttendance(id) {
             const index = students.findIndex(s => s.id === id.trim());
-            if (index === -1) {
-                showToast("ID TIDAK DIKENAL: " + id, "bg-red-500");
-                return;
-            }
-
-            // PERBAIKAN: Menambah kehadiran di objek dalam array students
-            const currentVal = parseInt(students[index].attendance) || 0;
-            students[index].attendance = currentVal + 1;
-            
-            // SEGARKAN TAMPILAN DASHBOARD & STATISTIK
+            if (index === -1) { showToast("ID TIDAK DIKENAL: " + id, "bg-red-500"); return; }
+            students[index].attendance = (parseInt(students[index].attendance) || 0) + 1;
             updateUI();
-            
-            // MUNCULKAN IDENTITAS ANAK
             showIDCard(students[index].id);
-            
             showToast(`BERHASIL: ${students[index].name.toUpperCase()} HADIR`, "bg-emerald-500");
-
-            // Sinkronisasi ke Google Sheets (jika URL tersedia)
             if (SCRIPT_URL && !SCRIPT_URL.includes("ISI_DENGAN_URL")) {
                 try {
                     const params = new URLSearchParams();
                     params.append('id', students[index].id);
                     params.append('action', 'attendance');
-                    
-                    fetch(SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        body: params
-                    });
-                } catch (e) {
-                    console.error("Gagal sinkronisasi data.");
-                }
+                    fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: params });
+                } catch (e) { console.error("Gagal sinkronisasi data."); }
             }
         }
 
         function startScan() {
             const scanModal = document.getElementById('scanModal');
             scanModal.classList.remove('hidden');
-            
-            if (!html5QrCode) {
-                html5QrCode = new Html5Qrcode("reader");
-            }
-            
-            const config = { fps: 15, qrbox: { width: 250, height: 250 } };
-            
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                config, 
+            if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 250, height: 250 } }, 
                 async (decodedText) => {
                     if(navigator.vibrate) navigator.vibrate(100);
-                    
-                    // Berhenti scan agar tidak mendeteksi dua kali
                     await html5QrCode.stop();
                     closeModal('scanModal');
-                    
-                    // Proses absensi
                     processAttendance(decodedText);
                 }
-            ).catch(err => {
-                showToast("KAMERA TIDAK AKTIF", "bg-red-500");
-                closeModal('scanModal');
-            });
+            ).catch(err => { showToast("KAMERA TIDAK AKTIF", "bg-red-500"); closeModal('scanModal'); });
+        }
+
+        // Fungsi baru untuk membuka modal input nama guru
+        function openTeacherModal() {
+            document.getElementById('teacherModal').classList.remove('hidden');
+            document.getElementById('teacherNameInput').value = "";
+            lucide.createIcons();
         }
 
         function downloadRekapPDF() {
+            const teacherName = document.getElementById('teacherNameInput').value.trim();
+            if (!teacherName) {
+                showToast("MASUKKAN NAMA GURU!", "bg-orange-500");
+                return;
+            }
+
+            closeModal('teacherModal');
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
+            // Header
             doc.setFontSize(18);
+            doc.setFont("helvetica", "bold");
             doc.text("REKAP KEHADIRAN MURID", 105, 15, { align: "center" });
             doc.setFontSize(11);
+            doc.setFont("helvetica", "normal");
             doc.text("GPdI Immanuel Berastagi", 105, 22, { align: "center" });
             doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, 105, 28, { align: "center" });
 
+            // Data Tabel
             const sortedStudents = [...students].sort((a, b) => {
                 if (a.class < b.class) return -1;
                 if (a.class > b.class) return 1;
@@ -362,12 +311,7 @@
             });
 
             const tableData = sortedStudents.map((s, index) => [
-                index + 1,
-                s.id,
-                s.name,
-                s.class,
-                s.school,
-                `${s.attendance} Hadir`
+                index + 1, s.id, s.name, s.class, s.school, `${s.attendance} Hadir`
             ]);
 
             doc.autoTable({
@@ -377,10 +321,20 @@
                 theme: 'striped',
                 headStyles: { fillColor: [79, 70, 229] },
                 styles: { fontSize: 9 },
-                columnStyles: {
-                    5: { fontStyle: 'bold', halign: 'center' }
-                }
+                columnStyles: { 5: { fontStyle: 'bold', halign: 'center' } }
             });
+
+            // Footer Signature (Tanda Tangan Guru)
+            const finalY = doc.lastAutoTable.finalY + 20;
+            const currentDay = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            
+            doc.setFontSize(10);
+            doc.text(`Berastagi, ${currentDay}`, 145, finalY);
+            doc.text("Guru Sekolah Minggu,", 145, finalY + 7);
+            
+            doc.setFont("helvetica", "bold");
+            doc.text(teacherName, 145, finalY + 30);
+            doc.line(145, finalY + 31, 190, finalY + 31); // Garis bawah nama
 
             doc.save(`Rekap_Absensi_${new Date().getTime()}.pdf`);
             showToast("PDF BERHASIL DIUNDUH", "bg-indigo-600");
