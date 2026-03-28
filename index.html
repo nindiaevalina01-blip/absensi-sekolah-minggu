@@ -216,11 +216,16 @@
 
         function updateUI() {
             document.getElementById('statTotalMurid').innerText = students.length;
-            // Pastikan attendance dihitung sebagai number agar statistik akurat
-            const totalHadir = students.reduce((acc, curr) => acc + (parseInt(curr.attendance) || 0), 0);
+            
+            // MENGHITUNG ULANG TOTAL KEHADIRAN
+            const totalHadir = students.reduce((acc, curr) => {
+                const count = parseInt(curr.attendance) || 0;
+                return acc + count;
+            }, 0);
+            
             document.getElementById('statTotalAbsensi').innerText = totalHadir;
             
-            // Perbarui daftar murid yang sedang ditampilkan (jika ada kategori yang dipilih)
+            // Perbarui daftar murid jika sedang melihat kategori tertentu
             if(currentKategori) renderStudentList(currentKategori);
         }
 
@@ -275,55 +280,69 @@
         }
 
         async function processAttendance(id) {
-            const index = students.findIndex(s => s.id === id);
+            const index = students.findIndex(s => s.id === id.trim());
             if (index === -1) {
-                showToast("ID TIDAK DIKENAL", "bg-red-500");
+                showToast("ID TIDAK DIKENAL: " + id, "bg-red-500");
                 return;
             }
 
-            // PERBAIKAN LOGIKA: Memastikan nilai attendance diperbarui di array utama
-            // 1. Ambil nilai saat ini dan ubah ke integer
-            let currentAttendance = parseInt(students[index].attendance) || 0;
+            // PERBAIKAN: Menambah kehadiran di objek dalam array students
+            const currentVal = parseInt(students[index].attendance) || 0;
+            students[index].attendance = currentVal + 1;
             
-            // 2. Tambah 1 dan simpan kembali ke objek murid di dalam array
-            students[index].attendance = currentAttendance + 1;
-            
-            // 3. Panggil updateUI untuk menyegarkan statistik dashboard dan daftar murid
+            // SEGARKAN TAMPILAN DASHBOARD & STATISTIK
             updateUI();
             
-            // Tampilkan notifikasi berhasil
-            showToast(`ABSENSI BERHASIL: ${students[index].name.toUpperCase()}`, "bg-emerald-500");
+            // MUNCULKAN IDENTITAS ANAK
+            showIDCard(students[index].id);
             
-            // Tampilkan kartu ID sebagai konfirmasi visual
-            showIDCard(id);
+            showToast(`BERHASIL: ${students[index].name.toUpperCase()} HADIR`, "bg-emerald-500");
 
-            // Kirim data ke Google Sheets (Database)
+            // Sinkronisasi ke Google Sheets (jika URL tersedia)
             if (SCRIPT_URL && !SCRIPT_URL.includes("ISI_DENGAN_URL")) {
                 try {
-                    await fetch(SCRIPT_URL, {
+                    const params = new URLSearchParams();
+                    params.append('id', students[index].id);
+                    params.append('action', 'attendance');
+                    
+                    fetch(SCRIPT_URL, {
                         method: 'POST',
                         mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({ id: id, action: 'attendance' })
+                        body: params
                     });
                 } catch (e) {
-                    console.error("Sinkronisasi tertunda karena masalah koneksi.");
+                    console.error("Gagal sinkronisasi data.");
                 }
             }
         }
 
         function startScan() {
-            document.getElementById('scanModal').classList.remove('hidden');
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 220 }, 
+            const scanModal = document.getElementById('scanModal');
+            scanModal.classList.remove('hidden');
+            
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+            
+            const config = { fps: 15, qrbox: { width: 250, height: 250 } };
+            
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
                 async (decodedText) => {
                     if(navigator.vibrate) navigator.vibrate(100);
                     
+                    // Berhenti scan agar tidak mendeteksi dua kali
                     await html5QrCode.stop();
                     closeModal('scanModal');
+                    
+                    // Proses absensi
                     processAttendance(decodedText);
                 }
-            ).catch(() => showToast("KAMERA TIDAK DIAKSES", "bg-red-500"));
+            ).catch(err => {
+                showToast("KAMERA TIDAK AKTIF", "bg-red-500");
+                closeModal('scanModal');
+            });
         }
 
         function downloadRekapPDF() {
@@ -369,7 +388,7 @@
 
         function closeModal(id) {
             document.getElementById(id).classList.add('hidden');
-            if (id === 'scanModal' && html5QrCode) {
+            if (id === 'scanModal' && html5QrCode && html5QrCode.isScanning) {
                 html5QrCode.stop().catch(() => {});
             }
         }
@@ -379,7 +398,11 @@
             t.innerText = msg;
             t.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-3xl text-white font-bold z-[100] shadow-xl text-[10px] uppercase tracking-widest transition-all ${color}`;
             t.classList.remove('opacity-0');
-            setTimeout(() => t.classList.add('opacity-0'), 3000);
+            t.classList.remove('pointer-events-none');
+            setTimeout(() => {
+                t.classList.add('opacity-0');
+                t.classList.add('pointer-events-none');
+            }, 3000);
         }
 
         window.onload = () => lucide.createIcons();
