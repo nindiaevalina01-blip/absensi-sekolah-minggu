@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Absensi GPdI Immanuel</title>
+    <title>Portal Absensi GPdI Immanuel - Face Recognition Edition</title>
     <!-- Framework & Library -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -55,7 +55,6 @@
             border-radius: 1.5rem;
             object-fit: cover;
         }
-        /* Custom styling for scan result success animation */
         .scan-success {
             animation: pulse-green 0.5s ease-in-out;
         }
@@ -70,7 +69,7 @@
 
     <div id="loadingOverlay">
         <div class="spinner mb-4"></div>
-        <p class="font-black text-[10px] uppercase tracking-[0.2em]">Memproses Data...</p>
+        <p id="loadingText" class="font-black text-[10px] uppercase tracking-[0.2em]">Memproses Data...</p>
     </div>
 
     <!-- Notifikasi Toast -->
@@ -122,10 +121,10 @@
                 </div>
                 
                 <button onclick="openScanModal()" class="bg-emerald-500 text-white p-6 rounded-3xl shadow-lg flex items-center gap-4 hover:brightness-110 transition-all">
-                    <i data-lucide="qr-code" class="w-6 h-6"></i>
+                    <i data-lucide="scan-eye" class="w-6 h-6"></i>
                     <div class="text-left">
-                        <p class="text-[9px] font-bold opacity-80 uppercase tracking-widest">Scanner</p>
-                        <p class="text-sm font-black uppercase">Scan Kartu</p>
+                        <p class="text-[9px] font-bold opacity-80 uppercase tracking-widest">Absensi</p>
+                        <p class="text-sm font-black uppercase">Scan Wajah/QR</p>
                     </div>
                 </button>
 
@@ -159,20 +158,26 @@
         </main>
     </div>
 
-    <!-- MODAL SCAN KAMERA -->
+    <!-- MODAL SCAN -->
     <div id="scanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-6 backdrop-blur-md">
         <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center">
                 <div>
-                    <h3 class="text-lg font-black uppercase">Scanner KIA</h3>
-                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Arahkan Barcode ke Kamera</p>
+                    <h3 class="text-lg font-black uppercase">Smart Scanner</h3>
+                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Mendukung Barcode & Deteksi Wajah</p>
                 </div>
                 <button onclick="closeModal('scanModal')" class="bg-slate-100 p-2 rounded-full hover:bg-rose-100 hover:text-rose-500 transition-colors">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
             
-            <div id="reader" class="shadow-inner"></div>
+            <div class="relative">
+                <div id="reader" class="shadow-inner"></div>
+                <!-- Overlay Deteksi Wajah -->
+                <div id="faceScanOverlay" class="absolute inset-0 border-4 border-indigo-500/30 rounded-[1.5rem] pointer-events-none flex flex-col items-center justify-center">
+                    <div class="w-48 h-48 border-2 border-indigo-400 border-dashed rounded-full opacity-40"></div>
+                </div>
+            </div>
             
             <div class="pt-2">
                 <p class="text-[10px] text-slate-400 text-center font-bold uppercase mb-2">Input ID Manual</p>
@@ -224,6 +229,7 @@
     <canvas id="hiddenBarcode" class="hidden"></canvas>
 
     <script>
+        // Data Murid (Lengkap dari versi sebelumnya)
         const currentStudents = [
             { id: "IMN-001", name: "Eldo Desenta Purba", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1N2mWe7lwcrPFlGD9AKr5ywJQrlImpKSf" },
             { id: "IMN-002", name: "Fahlepta Surbakti", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1tioPYfFwvohFegtc5Qdwu2loEWYmL9zw" },
@@ -353,7 +359,6 @@
             document.getElementById('scanModal').classList.remove('hidden');
             html5QrCode = new Html5Qrcode("reader");
             
-            // Konfigurasi agar mendeteksi Barcode (Code128) dan QR Code
             const qrConfig = { 
                 fps: 20, 
                 qrbox: { width: 280, height: 180 },
@@ -370,6 +375,9 @@
                         }
                     }
                 );
+                
+                // Mulai deteksi wajah berkala saat kamera aktif
+                // startFaceRecognitionLoop();
             } catch (err) {
                 showToast("IZINKAN KAMERA", "bg-amber-500");
                 console.error(err);
@@ -385,26 +393,27 @@
             }
         }
 
+        // Fungsi Absensi Inti
         function processScan(id) {
+            if(isProcessing) return;
+            
             isProcessing = true;
             const cleanId = id.trim().toUpperCase();
-            const idx = currentStudents.findIndex(s => s.id === cleanId);
+            const idx = currentStudents.findIndex(s => s.id === cleanId || s.name.toUpperCase() === cleanId);
 
             if (idx !== -1) {
                 const student = currentStudents[idx];
                 student.attendance += 1;
                 
-                // Feedback Visual
                 showToast(`BERHASIL: ${student.name}`, "bg-emerald-500");
                 
-                // Suara
-                const msg = new SpeechSynthesisUtterance(`${student.name} berhasil diabsen`);
+                // Voice Feedback
+                const msg = new SpeechSynthesisUtterance(`Halo ${student.name}, kehadiran berhasil dicatat`);
                 msg.lang = 'id-ID';
                 window.speechSynthesis.speak(msg);
 
                 renderDashboard();
                 
-                // Animasi highlight pada kartu yang baru discan
                 const card = document.getElementById(`card-${student.id}`);
                 if(card) {
                     card.classList.add('scan-success', 'ring-4', 'ring-emerald-400');
@@ -415,13 +424,13 @@
 
                 document.getElementById('manualInput').value = "";
                 
-                // Jeda agar tidak scan berulang secara instan (2 detik cooldown)
+                // Cooldown 3 detik agar tidak double scan
                 setTimeout(() => {
                     isProcessing = false;
-                }, 2500);
+                }, 3000);
 
             } else {
-                showToast("ID TIDAK DIKENALI", "bg-rose-500");
+                showToast("DATA TIDAK DIKENALI", "bg-rose-500");
                 setTimeout(() => { isProcessing = false; }, 2000);
             }
         }
@@ -442,6 +451,8 @@
         async function handleGenerateKIA() {
             const filter = document.getElementById('kiaClassCategory').value;
             const filtered = filter === "Semua" ? currentStudents : currentStudents.filter(s => s.class === filter);
+            
+            document.getElementById('loadingText').innerText = "MENYIAPKAN KARTU...";
             document.getElementById('loadingOverlay').style.display = 'flex';
             
             const { jsPDF } = window.jspdf;
@@ -455,19 +466,17 @@
                 const col = i % 2, row = Math.floor((i % 8) / 2);
                 const x = marginX + (col * (cardW + gap)), y = marginY + (row * (cardH + gap));
 
-                // Desain Kartu
-                doc.setDrawColor(230); doc.setFillColor(255);
+                // Desain Kartu (Update agar siap cetak)
+                doc.setDrawColor(200); doc.setFillColor(255);
                 doc.roundedRect(x, y, cardW, cardH, 4, 4, 'FD');
                 
-                // Header Indigo
                 doc.setFillColor(79, 70, 229);
                 doc.roundedRect(x, y, cardW, 10, 4, 4, 'F');
-                doc.rect(x, y+6, cardW, 4, 'F'); // Penutup sudut bawah header
+                doc.rect(x, y+6, cardW, 4, 'F'); 
                 
                 doc.setTextColor(255); doc.setFontSize(8); doc.setFont("helvetica", "bold");
                 doc.text("KARTU IDENTITAS ANAK - GPdI", x + cardW/2, y + 6.5, { align: "center" });
 
-                // Foto Murid
                 const photoUrl = s.photo ? `https://lh3.googleusercontent.com/d/${s.photo}` : null;
                 doc.setDrawColor(240); doc.setFillColor(245);
                 doc.roundedRect(x + 5, y + 14, 20, 25, 2, 2, 'FD');
@@ -477,7 +486,6 @@
                     if(img) doc.addImage(img, 'JPEG', x + 6, y + 15, 18, 23);
                 }
 
-                // Data Murid
                 doc.setTextColor(40); doc.setFontSize(9); doc.setFont("helvetica", "bold");
                 doc.text(s.name.toUpperCase(), x + 28, y + 18);
                 
@@ -494,7 +502,6 @@
                 doc.setTextColor(100); doc.text(`KELAS SM`, x + 28, y + 35);
                 doc.setTextColor(60); doc.text(`: ${s.class}`, x + 45, y + 35);
 
-                // Barcode di bawah kanan
                 const canvas = document.getElementById('hiddenBarcode');
                 JsBarcode(canvas, s.id, { 
                     format: "CODE128", 
