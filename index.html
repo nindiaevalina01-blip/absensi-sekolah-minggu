@@ -319,7 +319,7 @@
     <canvas id="hiddenBarcode" class="hidden"></canvas>
 
     <script>
-        let students = [
+        const students = [
             { id: "IMN-001", name: "Eldo Desenta Purba", age:9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1N2mWe7lwcrPFlGD9AKr5ywJQrlImpKSf" },
             { id: "IMN-002", name: "Fahlepta Surbakti", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1tioPYfFwvohFegtc5Qdwu2loEWYmL9zw" },
             { id: "IMN-003", name: "Lexi Felicia", age: 12, school: "6 SD", class: "Cahaya", attendance: 0, photo: "1HF0tifiO1j-YAepiJQilv49NoIA8Xe-G" },
@@ -378,52 +378,58 @@
             { id: "IMN-0033", name: "Axel Kenneth Ginting", age: 3, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "1lU5KDXuWwlbmpQI0Afn0hKV4oPZ0puVU" }
         ];
 
-        function getPhotoUrl(id, name) {
-            if (!id) return `https://api.dicebear.com/7.x/initials/png?seed=${encodeURIComponent(name)}`;
-            return `https://lh3.googleusercontent.com/u/0/d/${id}`;
+        // Konfigurasi URL Foto
+        function getPhotoUrl(driveId, studentName) {
+            if (!driveId) return `https://api.dicebear.com/7.x/initials/png?seed=${encodeURIComponent(studentName)}`;
+            // Menggunakan proxy atau direct link untuk preview (catatan: Drive sering kena CORS)
+            return `https://lh3.googleusercontent.com/d/${driveId}`;
         }
 
-        function handleLogin() {
-            document.getElementById('loginPage').classList.add('hidden');
-            document.getElementById('dashboardPage').classList.remove('hidden');
-            lucide.createIcons();
-            updateUI();
-            renderStudentList('Cahaya');
-        }
-
-        function updateUI() {
-            document.getElementById('statTotalMurid').innerText = students.length;
-            document.getElementById('statTotalAbsensi').innerText = students.reduce((a, b) => a + b.attendance, 0);
-        }
-
-        function renderStudentList(cat) {
+        // Render List Murid
+        function renderStudents() {
             const list = document.getElementById('studentList');
+            const stats = document.getElementById('statTotalMurid');
             list.innerHTML = "";
-            students.filter(s => s.class === cat).forEach(s => {
-                const div = document.createElement('div');
-                div.className = "bg-white p-4 rounded-3xl shadow-sm flex items-center gap-4 border cursor-pointer hover:shadow-md";
-                div.onclick = () => showIDCard(s.id);
-                div.innerHTML = `
-                    <img src="${getPhotoUrl(s.photo, s.name)}" class="w-12 h-12 rounded-xl bg-gray-100 object-cover" onerror="this.src='https://api.dicebear.com/7.x/initials/png?seed=${s.name}'">
-                    <div class="flex-1">
-                        <p class="font-bold text-xs uppercase">${s.name}</p>
-                        <p class="text-[9px] text-gray-400 font-bold">${s.id} • ${s.class}</p>
+            stats.innerText = students.length;
+
+            students.forEach(s => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-3xl shadow-sm border flex items-center gap-4 hover:border-indigo-300 cursor-pointer transition-colors";
+                card.onclick = () => showPreview(s);
+                card.innerHTML = `
+                    <img src="${getPhotoUrl(s.photo, s.name)}" class="w-12 h-12 rounded-xl object-cover bg-gray-100" 
+                         onerror="this.src='https://api.dicebear.com/7.x/initials/png?seed=${s.name}'">
+                    <div>
+                        <p class="font-black text-[11px] uppercase">${s.name}</p>
+                        <p class="text-[9px] font-bold text-gray-400">${s.id} • KELAS ${s.class.toUpperCase()}</p>
                     </div>
                 `;
-                list.appendChild(div);
+                list.appendChild(card);
             });
         }
 
-        function showIDCard(id) {
-            const s = students.find(x => x.id === id);
-            document.getElementById('cardModal').classList.remove('hidden');
+        // Preview Kartu Tunggal
+        function showPreview(s) {
+            const modal = document.getElementById('cardModal');
             document.getElementById('cardName').innerText = s.name;
             document.getElementById('cardIdDisplay').innerText = s.id;
             document.getElementById('cardPhoto').src = getPhotoUrl(s.photo, s.name);
-            JsBarcode("#barcodeCanvas", s.id, { format: "CODE128", height: 40, displayValue: false });
+            
+            JsBarcode("#barcodePreview", s.id, {
+                format: "CODE128",
+                width: 2,
+                height: 40,
+                displayValue: false
+            });
+            
+            modal.classList.remove('hidden');
         }
 
-        // FUNGSI KRUSIAL: Mengubah URL Foto ke Base64 agar masuk PDF
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // Fungsi Helper: Mengubah Image URL ke Base64 (Untuk PDF)
         async function getBase64Image(url) {
             try {
                 const response = await fetch(url);
@@ -431,96 +437,96 @@
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onloadend = () => resolve(reader.result);
-                    reader.onerror = reject;
+                    reader.onerror = () => reject(null);
                     reader.readAsDataURL(blob);
                 });
-            } catch (e) {
+            } catch (err) {
+                console.error("Gagal memuat gambar:", url);
                 return null;
             }
         }
 
+        // Cetak Massal PDF
         async function downloadAllCardsPDF() {
-            showToast("SEDANG MEMPROSES FOTO... MOHON TUNGGU", "bg-indigo-600");
+            showToast("SEDANG MENYIAPKAN DOKUMEN...", "bg-indigo-600");
+            
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
             
-            const cardW = 90; 
-            const cardH = 135; 
-            const margin = 10;
-            const gap = 5;
+            // Layout Konfigurasi (A4: 210 x 297mm)
+            const cardW = 85; 
+            const cardH = 125; 
+            const marginX = 15;
+            const marginY = 15;
+            const gap = 10;
 
             for (let i = 0; i < students.length; i++) {
                 const s = students[i];
-                const pageIndex = i % 4;
+                const pageIndex = i % 4; // 4 kartu per halaman
+                
                 if (i > 0 && pageIndex === 0) doc.addPage();
 
                 const col = pageIndex % 2;
                 const row = Math.floor(pageIndex / 2);
-                const x = margin + (col * (cardW + gap));
-                const y = margin + (row * (cardH + gap));
+                
+                const x = marginX + (col * (cardW + gap));
+                const y = marginY + (row * (cardH + gap));
 
-                // Frame
-                doc.setDrawColor(230);
+                // Gambar Background Kartu (Rounded Rect)
+                doc.setDrawColor(220);
                 doc.setFillColor(255);
-                doc.roundedRect(x, y, cardW, cardH, 5, 5, 'FD');
+                doc.roundedRect(x, y, cardW, cardH, 8, 8, 'FD');
 
-                // Header
+                // Header Biru
                 doc.setFillColor(79, 70, 229);
-                doc.roundedRect(x, y, cardW, 12, 5, 5, 'F');
+                doc.roundedRect(x, y, cardW, 12, 8, 8, 'F');
                 doc.rect(x, y + 8, cardW, 4, 'F');
                 doc.setTextColor(255);
                 doc.setFontSize(7);
-                doc.text("GPdI IMMANUEL BERASTAGI", x + 5, y + 7);
-
-                // PROSES FOTO MURID
-                const fullPhotoUrl = getPhotoUrl(s.photo, s.name);
-                let photoBase64 = await getBase64Image(fullPhotoUrl);
-
-                // Jika gagal karena CORS Drive, gunakan avatar inisial
-                if (!photoBase64) {
-                    const fallbackUrl = `https://api.dicebear.com/7.x/initials/png?seed=${encodeURIComponent(s.name)}&backgroundColor=f1f5f9`;
-                    photoBase64 = await getBase64Image(fallbackUrl);
-                }
-
-                if (photoBase64) {
-                    doc.addImage(photoBase64, 'PNG', x + (cardW/2 - 20), y + 20, 40, 52);
-                    doc.setDrawColor(79, 70, 229, 0.3);
-                    doc.rect(x + (cardW/2 - 20), y + 20, 40, 52, 'D');
-                }
-
-                // Nama
-                doc.setTextColor(30);
-                doc.setFontSize(10);
                 doc.setFont("helvetica", "bold");
-                const shortName = s.name.length > 20 ? s.name.substring(0, 18) + ".." : s.name;
-                doc.text(shortName.toUpperCase(), x + cardW/2, y + 85, { align: "center" });
+                doc.text("GPdI IMMANUEL BERASTAGI", x + cardW / 2, y + 8, { align: "center" });
+
+                // Ambil Foto (Base64)
+                let photoData = await getBase64Image(getPhotoUrl(s.photo, s.name));
+                // Fallback jika Drive gagal (CORS)
+                if (!photoData) {
+                    const fallbackUrl = `https://api.dicebear.com/7.x/initials/png?seed=${encodeURIComponent(s.name)}&backgroundType=gradientLinear`;
+                    photoData = await getBase64Image(fallbackUrl);
+                }
+
+                if (photoData) {
+                    try {
+                        doc.addImage(photoData, 'PNG', x + (cardW / 2 - 20), y + 20, 40, 50);
+                    } catch (e) {
+                        console.error("Gagal input gambar ke PDF");
+                    }
+                }
+
+                // Info Murid
+                doc.setTextColor(30);
+                doc.setFontSize(11);
+                const displayName = s.name.length > 20 ? s.name.substring(0, 18) + '..' : s.name;
+                doc.text(displayName.toUpperCase(), x + cardW / 2, y + 82, { align: "center" });
                 
                 doc.setFontSize(7);
-                doc.setFont("helvetica", "normal");
-                doc.text(s.id, x + cardW/2, y + 90, { align: "center" });
+                doc.setTextColor(150);
+                doc.text(s.id + " • KELAS " + s.class.toUpperCase(), x + cardW / 2, y + 88, { align: "center" });
 
-                // Box Info
-                doc.setFillColor(245, 247, 250);
-                doc.roundedRect(x + 10, y + 98, cardW - 20, 12, 2, 2, 'F');
-                doc.setFontSize(5);
-                doc.text("KELAS", x + 25, y + 103, { align: "center" });
-                doc.text("USIA", x + cardW - 25, y + 103, { align: "center" });
-                doc.setFontSize(8);
-                doc.text(s.class.toUpperCase(), x + 25, y + 108, { align: "center" });
-                doc.text(`${s.age} THN`, x + cardW - 25, y + 108, { align: "center" });
+                // Divider Line
+                doc.setDrawColor(240);
+                doc.line(x + 10, y + 95, x + cardW - 10, y + 95);
 
                 // Barcode
                 const canvas = document.getElementById('hiddenBarcode');
-                JsBarcode(canvas, s.id, { format: "CODE128", displayValue: false });
-                doc.addImage(canvas.toDataURL("image/png"), 'PNG', x + (cardW/2 - 20), y + 115, 40, 10);
+                JsBarcode(canvas, s.id, { format: "CODE128", displayValue: false, margin: 0 });
+                const barcodeData = canvas.toDataURL("image/png");
+                doc.addImage(barcodeData, 'PNG', x + (cardW / 2 - 20), y + 105, 40, 10);
             }
 
-            doc.save(`KIA_Massal_${new Date().getTime()}.pdf`);
-            showToast("PDF BERHASIL DIUNDUH", "bg-emerald-600");
+            doc.save(`KARTU_MURID_ALL_${Date.now()}.pdf`);
+            showToast("PDF BERHASIL DIUNDUH!", "bg-green-600");
         }
 
-        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-        
         function showToast(msg, color) {
             const t = document.getElementById('toast');
             t.innerText = msg;
@@ -529,350 +535,11 @@
             setTimeout(() => t.classList.add('opacity-0'), 3000);
         }
 
-        window.onload = () => lucide.createIcons();
-    </script>
-</body>
-</html>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwQhCc_f1DJlSBYMNQzaetk5eUvNvCVDfWCn3BD69ypnm5tWFoWx2Ad5J0LLsIjxntsQ/exec";
-
-        let students = [
-            { id: "IMN-001", name: "Eldo Desenta Purba", age:9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1N2mWe7lwcrPFlGD9AKr5ywJQrlImpKSf/view?usp=sharing" },
-            { id: "IMN-002", name: "Fahlepta Surbakti", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1tioPYfFwvohFegtc5Qdwu2loEWYmL9zw/view?usp=sharing" },
-            { id: "IMN-003", name: "Lexi Felicia", age: 12, school: "6 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1HF0tifiO1j-YAepiJQilv49NoIA8Xe-G/view?usp=sharing" },
-            { id: "IMN-004", name: "Felizio Sitepu", age: 8, school: "3 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1ZsW8SYwtE_58RV4mceMhnSn60yNAN1Fs/view?usp=sharing" },
-            { id: "IMN-005", name: "Sergius Silalahi", age: 10, school: "4 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1r7VgfPc3RUPpRc7_44FjXGKQadwQ7I_Q/view?usp=sharing" },
-            { id: "IMN-006", name: "Gabriel Ginting", age: 11, school: "4 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1LfqXQ_EvLpHmAyMgriv4Qxi0-rMFpaPz/view?usp=sharing" },
-            { id: "IMN-007", name: "Ria Silalahi", age: 12, school: "5 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1tIyAEk0rvZtkSEJnjbbcGjdY2W94VAXz/view?usp=sharing" },
-            { id: "IMN-008", name: "Elsa Purba", age: 11, school: "5 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/12SgyOcrop0d-h6ny6_BfyNg4EkSSPcmp/view?usp=sharing" },
-            { id: "IMN-009", name: "Enola", age: 11, school: "5 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1HrKwbW-h_Mc51aLVp48CShSaMJOAcQxy/view?usp=sharing" },
-            { id: "IMN-010", name: "Adelia Sibarani", age: 11, school: "5 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1yoxiZ5MvxgvwQePZ4geZEqAlO2ycr7Ks/view?usp=sharing" },
-            { id: "IMN-011", name: "Aurel Barus", age: 11, school: "5 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1y9REKuYi4T_ogTTuMvrnF8AibEyoUdjV/view?usp=sharing" },
-            { id: "IMN-012", name: "Charlotte Sitanggang", age: 11, school: "6 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1cj8D-ArkF3O8m6MBGLD5XaM6VvV-Bhvr/view?usp=sharing" },
-            { id: "IMN-013", name: "Vanesa Br Ginting", age: 12, school: "6 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1tr4uyD8EXFm2b0j0eN-DbjYMEoRIsBqn/view?usp=sharing" },
-            { id: "IMN-014", name: "Evelin Br Ginting", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1yteDD45DOPZTPkyy3QfwABGhg3mbNU3Y/view?usp=sharing" },
-            { id: "IMN-015", name: "Alvina Gabriella", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1j7hM7K1uZCczTq2MzlJaFAho9GEQQixf/view?usp=sharing" },
-            { id: "IMN-016", name: "Kirel Adrelia Sibero", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/15oXwGpvr8guegVLcmSYfusC-CT2zGJSO/view?usp=sharing" },
-            { id: "IMN-017", name: "Ema Br Sinaga", age: 10, school: "4 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1yw3pwpdYFoSZJMwMcsE2PAeLvyQJivxl/view?usp=sharing" },
-            { id: "IMN-018", name: "Okto Zendate", age: 12, school: "6 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1Yfnc19co2Izig3ayvJOqo7_fOretCEHh/view?usp=sharing" },
-            { id: "IMN-019", name: "Adel Esterina Br Sinuraya", age: 11, school: "6 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1TRR4yrDrUb7M3JPVDv6-u0CiYLLWr5Kc/view?usp=sharing" },
-            { id: "IMN-020", name: "Cristina Oktaviani Br Tarigan", age: 11, school: "5 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1h1AG74c_6_OpGR1q7dgXsKFDUD2HLdct/view?usp=sharing" },
-            { id: "IMN-021", name: "Keren Eklesia Br Ginting", age: 11, school: "5 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1Gg4ImFYYqJxXsBK9YddWSZ8vwcXNxrqF/view?usp=sharing" },
-            { id: "IMN-022", name: "Edgard Sharos Simbolon", age: 10, school: "4 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1g4uhJI41rTZtKpVhRrfc47yfxE0QfeGN/view?usp=sharing" },
-            { id: "IMN-023", name: "MarzeloGeofrey", age: 12, school: "6 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1heYwpNOAntPe4wdk1EjN9lUM4VyyYgZF/view?usp=sharing" },
-            { id: "IMN-024", name: "Adriel Tarigan", age: 10, school: "3 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1bah1CLdpnIwvYIiQvAGqQu7jSQRKLd-1/view?usp=sharing" },
-            { id: "IMN-0001", name: "Yafet Andreas Brahmana", age:8, school: "2 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1O0lRiRvYMzp02s1Ofx-sv3XVGiH0yjQu/view?usp=sharing" },
-            { id: "IMN-0002", name: "Yesril Elvano Ginting", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1QNTh97TyDCuEupE16pq81zB7jDIU5o9a/view?usp=sharing" },
-            { id: "IMN-0003", name: "Yoel Ginting", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1c_x_KaBGdkfV1PPZOb2oMwfea6hjS5rU/view?usp=sharing" },
-            { id: "IMN-0004", name: "Giles Hagai Karo Karo", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1Ngf2JMe6cTxH8_x4R1L9bgnq4re9S4Tz/view?usp=sharing" },
-            { id: "IMN-0005", name: "Fahlef Surbakti", age: 9, school: "3 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1dRNH9h-EimzAxgOxy6fni89lEEM1IAng/view?usp=sharing" },
-            { id: "IMN-0006", name: "Thiago Ginting", age: 5, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1WHmpgX14X4hjFhxEZn_3NdTXYigqo5UR/view?usp=sharing" },
-            { id: "IMN-0007", name: "Maria Sibarani", age: 8, school: "1 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1ExMpD2v7g4KA5zyHIjxFxlF_NZKct-Xn/view?usp=sharing" },
-            { id: "IMN-0008", name: "Helda Sibarani", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1OjISM805fKoktAIfg5EYXbv3WiaFlvys/view?usp=sharing" },
-            { id: "IMN-0009", name: "Velika Adriella Br Sitepu", age: 4, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1hvNyCl_3WOncaMa_vVqXuEB_gPJd7hoD/view?usp=sharing" },
-            { id: "IMN-0010", name: "Gareth Dnoel Sombolon", age: 7, school: "1 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1mHqulG0C69i1MXOU5xbHxD982eb5Ve0b/view?usp=sharing" },
-            { id: "IMN-0011", name: "Rafa Sinaga", age: 8, school: "1 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1LWN7B88q4hrU0rZsw9-zOGCkZLCWlnew/view?usp=sharing" },
-            { id: "IMN-0012", name: "Tesalonika Sinaga", age: 3, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1wcnpFl8nwOqJDTvxdzT9f75TmrMZa0AO/view?usp=sharing" },
-            { id: "IMN-0013", name: "Desen Purba", age: 9, school: "3 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1pBzraJnZyu-CPWkdQJmD7RE73tJG0HJv/view?usp=sharing" },
-            { id: "IMN-0014", name: "Elyora Purba", age: 4, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1hFdZcmRjxYWAx7s8DS_Q_9-P1OmEu66W/view?usp=sharing" },
-            { id: "IMN-0015", name: "Elzira Br Ginting", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1uYTBx7L6T3XKpLn4p_YKWhhsT-uBUe_7/view?usp=sharing" },
-            { id: "IMN-0016", name: "Jesen Siepu", age: 2, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/16egK2BXQt7pnQLGnbdv_ionLcV2WlAHA/view?usp=sharing" },
-            { id: "IMN-0017", name: "Aksel Natan Silalahi", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1LYIy91a_VMElFttMMnHwebYCUJUuZgcJ/view?usp=sharing" },
-            { id: "IMN-0018", name: "Hesen Sitepu", age: 7, school: "1 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1kMHFQXZDqFKVu_79j0rtxwqZZKmqyOH2/view?usp=sharing" },
-            { id: "IMN-0019", name: "Ilona Siahaan", age: 1, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1EOOtEPfksPQj3Sqpjhit7Hd1ULGleKJx/view?usp=sharing" },
-            { id: "IMN-0020", name: "Jediarga Ginting (Jeje)", age: 5, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1k3z-T_-sufROMLAjbLYbvGPj3kYdpAO5/view?usp=sharing" },
-            { id: "IMN-0021", name: "Alvito Lubis", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1iD4JdpVRdO6Pp40gwEfAoMacY5q7IEPg/view?usp=sharing" },
-            { id: "IMN-0022", name: "Dea Elnora Br purba", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1dqha2EwcSMVMF94vzNwoQsyxJoFLUgbd/view?usp=sharing" },
-            { id: "IMN-0023", name: "Jesifa Acira Fayona", age: 8, school: "1 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1bVU0zjQDayIJbNFyW88ADO5nY0kVKO7J/view?usp=sharing" },
-            { id: "IMN-0024", name: "Kavya Miracle Joe", age: 7, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1H8KKbTm8awGy3eBkhto-wHdotAiNIOa6/view?usp=sharing" },
-            { id: "IMN-0025", name: "Zivya Miracle Joe", age: 7, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1HJo8efC9_jIBWiAQ7T1ut_X8wAjlEd9T/view?usp=sharing" },
-            { id: "IMN-0026", name: "Clairine Misella Br Ginting", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1spOkYjpmXVbK-bkxhMiFTiblkwt4khXK/view?usp=sharing" },
-            { id: "IMN-0027", name: "Gloria Cantika Br Simanjorang", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1KoGONHl_9MmpnILAYzlmgRzqX-QE4MxG/view?usp=sharing" },
-            { id: "IMN-0028", name: "Diva Bintang", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1DzAz2R6RLXNoD441AxoiDoFCqMIoHlYd/view?usp=sharing" },
-            { id: "IMN-0029", name: "Mika Ulisinar Sihite", age: 10, school: "3 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1Srl8CNfQ6Z97_0GRFXkog1KOWArrs8ec/view?usp=sharing" },
-            { id: "IMN-0030", name: "Aurelia Br Tarigan", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1aDIIJesac_MsoZZqvcMpDC7aJi9MRy0A/view?usp=sharing" },
-            { id: "IMN-0031", name: "Joe Rapha Ginting", age: 1, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/13uDFYHuLzQxQdZGDC3EyZ0JZUW8rprIl/view?usp=sharing" },
-            { id: "IMN-0032", name: "Chasia Queensa Br Ginting", age: 6, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/19i7sj8V-qxNkyDUHIn6YshkOIGbDTANv/view?usp=sharing" },
-            { id: "IMN-0033", name: "Axel Kenneth Ginting", age: 3, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1lU5KDXuWwlbmpQI0Afn0hKV4oPZ0puVU/view?usp=sharing" }
-        ];
-
-        let html5QrCode;
-        let currentKategori = "";
-
-        function getDirectDriveLink(url, studentName) {
-            if (!url || url.trim() === "") return `https://api.dicebear.com/7.x/avataaars/svg?seed=${studentName}`;
-            if (url.includes('drive.google.com')) {
-                let fileId = "";
-                try {
-                    if (url.includes('id=')) fileId = url.split('id=')[1].split('&')[0];
-                    else fileId = url.split('/d/')[1].split('/')[0];
-                    return `https://lh3.googleusercontent.com/u/0/d/${fileId}`;
-                } catch (e) { return `https://api.dicebear.com/7.x/avataaars/svg?seed=${studentName}`; }
-            }
-            return url;
-        }
-
-        function handleLogin() {
-            const u = document.getElementById('username').value;
-            const p = document.getElementById('password').value;
-            if (u === "Admin" && p === "Berastagi2024") {
-                document.getElementById('loginPage').classList.add('hidden');
-                document.getElementById('dashboardPage').classList.remove('hidden');
-                lucide.createIcons();
-                updateUI();
-            } else { showToast("Login Gagal!", "bg-red-500"); }
-        }
-
-        function updateUI() {
-            document.getElementById('statTotalMurid').innerText = students.length;
-            const totalHadir = students.reduce((acc, curr) => acc + (parseInt(curr.attendance) || 0), 0);
-            document.getElementById('statTotalAbsensi').innerText = totalHadir;
-            if(currentKategori) renderStudentList(currentKategori);
-        }
-
-        function renderStudentList(kategoriName) {
-            currentKategori = kategoriName;
-            const list = document.getElementById('studentList');
-            document.getElementById('classContainer').classList.remove('hidden');
-            document.getElementById('currentClassName').innerText = "Kategori: " + kategoriName;
-            list.innerHTML = "";
-            const filtered = students.filter(s => s.class === kategoriName);
-            if(filtered.length === 0) {
-                list.innerHTML = `<p class="col-span-full text-center text-gray-400 py-10 text-xs font-bold">Belum ada murid di kelas ini.</p>`;
-                return;
-            }
-            filtered.forEach(s => {
-                const card = document.createElement('div');
-                card.className = "bg-white p-4 rounded-3xl shadow-sm flex items-center gap-4 border cursor-pointer hover:shadow-md transition-shadow";
-                card.onclick = () => showIDCard(s.id);
-                card.innerHTML = `
-                    <img src="${getDirectDriveLink(s.photo, s.name)}" class="w-12 h-12 rounded-xl bg-indigo-50 object-cover" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${s.name}'">
-                    <div class="flex-1">
-                        <h5 class="font-bold text-gray-800 text-xs">${s.name}</h5>
-                        <p class="text-[9px] text-gray-400 font-bold">${s.school} • ${s.age} Thn</p>
-                    </div>
-                    <span class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-xl">${s.attendance}</span>
-                `;
-                list.appendChild(card);
-            });
-        }
-
-        function showIDCard(id) {
-            const s = students.find(x => x.id === id);
-            if(!s) return;
-            document.getElementById('cardModal').classList.remove('hidden');
-            document.getElementById('cardName').innerText = s.name;
-            document.getElementById('cardIdText').innerText = s.id;
-            document.getElementById('cardIdDisplay').innerText = s.id;
-            document.getElementById('cardAge').innerText = (s.age || '-') + " TAHUN";
-            document.getElementById('cardAttendance').innerText = s.attendance + " KALI";
-            document.getElementById('cardPhoto').src = getDirectDriveLink(s.photo, s.name);
-            JsBarcode("#barcodeCanvas", s.id, { format: "CODE128", width: 2, height: 40, displayValue: false, lineColor: "#4f46e5" });
-        }
-
-        // Fungsi baru untuk Mencetak Semua Kartu ke dalam Satu PDF
-        async function downloadAllCardsPDF() {
-            showToast("MENYIAPKAN SEMUA KARTU...", "bg-indigo-600");
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'mm', 'a4'); // Kertas A4 Portrait
-            
-            // Konfigurasi Layout (4 Kartu per halaman: 2x2)
-            const cardW = 90; // Lebar kartu dalam mm
-            const cardH = 135; // Tinggi kartu dalam mm (Portrait)
-            const margin = 10;
-            const gap = 10;
-
-            for (let i = 0; i < students.length; i++) {
-                const s = students[i];
-                const pageIndex = i % 4; // 0, 1, 2, 3 per halaman
-                
-                if (i > 0 && pageIndex === 0) doc.addPage();
-
-                // Hitung Posisi X dan Y
-                const col = pageIndex % 2;
-                const row = Math.floor(pageIndex / 2);
-                const x = margin + (col * (cardW + gap));
-                const y = margin + (row * (cardH + gap));
-
-                // Gambar Bingkai Kartu
-                doc.setDrawColor(200);
-                doc.setFillColor(255);
-                doc.roundedRect(x, y, cardW, cardH, 8, 8, 'FD');
-
-                // Header Biru
-                doc.setFillColor(79, 70, 229); // Indigo-600
-                doc.roundedRect(x, y, cardW, 15, 8, 8, 'F');
-                doc.rect(x, y + 10, cardW, 5, 'F'); // Menutup lengkungan bawah header agar lurus
-
-                doc.setTextColor(255);
-                doc.setFontSize(8);
-                doc.setFont("helvetica", "bold");
-                doc.text("GPdI IMMANUEL BERASTAGI", x + 5, y + 9);
-                doc.setFontSize(7);
-                doc.text(s.id, x + cardW - 5, y + 9, { align: "right" });
-
-                // Placeholder Foto (Karena memproses image eksternal ke PDF di JS sulit secara sinkron tanpa CORS, kita buat bingkai saja)
-                doc.setDrawColor(79, 70, 229, 0.2);
-                doc.setFillColor(243, 244, 246);
-                doc.roundedRect(x + (cardW/2 - 20), y + 25, 40, 52, 5, 5, 'FD');
-                
-                doc.setTextColor(150);
-                doc.setFontSize(6);
-                doc.text("FOTO MURID", x + cardW/2, y + 51, { align: "center" });
-
-                // Nama Murid
-                doc.setTextColor(15, 23, 42);
-                doc.setFontSize(7);
-                doc.text("NAMA MURID", x + cardW/2, y + 85, { align: "center" });
-                doc.setFontSize(12);
-                doc.setFont("helvetica", "bold");
-                
-                // Potong nama jika terlalu panjang
-                let displayName = s.name.toUpperCase();
-                if(displayName.length > 20) displayName = displayName.substring(0, 18) + "...";
-                doc.text(displayName, x + cardW/2, y + 92, { align: "center" });
-
-                // Info Box (Usia & Sekolah)
-                doc.setFillColor(249, 250, 251);
-                doc.roundedRect(x + 10, y + 100, cardW - 20, 12, 3, 3, 'F');
-                
-                doc.setTextColor(100);
-                doc.setFontSize(6);
-                doc.setFont("helvetica", "normal");
-                doc.text("USIA", x + 25, y + 105, { align: "center" });
-                doc.text("KELAS", x + cardW - 25, y + 105, { align: "center" });
-                
-                doc.setTextColor(15, 23, 42);
-                doc.setFontSize(8);
-                doc.setFont("helvetica", "bold");
-                doc.text(`${s.age} THN`, x + 25, y + 109, { align: "center" });
-                doc.text(s.class.toUpperCase(), x + cardW - 25, y + 109, { align: "center" });
-
-                // Barcode Generation ke Base64
-                const canvas = document.getElementById('hiddenBarcode');
-                JsBarcode(canvas, s.id, { format: "CODE128", width: 2, height: 40, displayValue: false });
-                const barcodeImg = canvas.toDataURL("image/png");
-                doc.addImage(barcodeImg, 'PNG', x + (cardW/2 - 20), y + 115, 40, 10);
-                
-                doc.setTextColor(150);
-                doc.setFontSize(5);
-                doc.text("SCAN FOR ATTENDANCE", x + cardW/2, y + 128, { align: "center" });
-            }
-
-            doc.save(`Semua_Kartu_Identitas_${new Date().getTime()}.pdf`);
-            showToast("PDF KARTU BERHASIL DIUNDUH", "bg-emerald-600");
-        }
-
-        async function processAttendance(id) {
-            const index = students.findIndex(s => s.id === id.trim());
-            if (index === -1) { showToast("ID TIDAK DIKENAL: " + id, "bg-red-500"); return; }
-            students[index].attendance = (parseInt(students[index].attendance) || 0) + 1;
-            updateUI();
-            showIDCard(students[index].id);
-            showToast(`BERHASIL: ${students[index].name.toUpperCase()} HADIR`, "bg-emerald-500");
-            if (SCRIPT_URL && !SCRIPT_URL.includes("ISI_DENGAN_URL")) {
-                try {
-                    const params = new URLSearchParams();
-                    params.append('id', students[index].id);
-                    params.append('action', 'attendance');
-                    fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: params });
-                } catch (e) { console.error("Gagal sinkronisasi data."); }
-            }
-        }
-
-        function startScan() {
-            const scanModal = document.getElementById('scanModal');
-            scanModal.classList.remove('hidden');
-            if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 250, height: 250 } }, 
-                async (decodedText) => {
-                    if(navigator.vibrate) navigator.vibrate(100);
-                    await html5QrCode.stop();
-                    closeModal('scanModal');
-                    processAttendance(decodedText);
-                }
-            ).catch(err => { showToast("KAMERA TIDAK AKTIF", "bg-red-500"); closeModal('scanModal'); });
-        }
-
-        function openTeacherModal() {
-            document.getElementById('teacherModal').classList.remove('hidden');
-            document.getElementById('teacherNameInput').value = "";
-            lucide.createIcons();
-        }
-
-        function downloadRekapPDF() {
-            const teacherName = document.getElementById('teacherNameInput').value.trim();
-            if (!teacherName) {
-                showToast("MASUKKAN NAMA GURU!", "bg-orange-500");
-                return;
-            }
-
-            closeModal('teacherModal');
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            doc.setFontSize(18);
-            doc.setFont("helvetica", "bold");
-            doc.text("REKAP KEHADIRAN MURID", 105, 15, { align: "center" });
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "normal");
-            doc.text("GPdI Immanuel Berastagi", 105, 22, { align: "center" });
-            doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, 105, 28, { align: "center" });
-
-            const sortedStudents = [...students].sort((a, b) => {
-                if (a.class < b.class) return -1;
-                if (a.class > b.class) return 1;
-                return a.name.localeCompare(b.name);
-            });
-
-            const tableData = sortedStudents.map((s, index) => [
-                index + 1, s.id, s.name, s.class, s.school, `${s.attendance} Hadir`
-            ]);
-
-            doc.autoTable({
-                startY: 35,
-                head: [['No', 'ID', 'Nama Lengkap', 'Kelas', 'Sekolah', 'Kehadiran']],
-                body: tableData,
-                theme: 'striped',
-                headStyles: { fillColor: [79, 70, 229] },
-                styles: { fontSize: 9 },
-                columnStyles: { 5: { fontStyle: 'bold', halign: 'center' } }
-            });
-
-            const finalY = doc.lastAutoTable.finalY + 20;
-            const currentDay = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-            
-            doc.setFontSize(10);
-            doc.text(`Berastagi, ${currentDay}`, 145, finalY);
-            doc.text("Guru Sekolah Minggu,", 145, finalY + 7);
-            
-            doc.setFont("helvetica", "bold");
-            doc.text(teacherName, 145, finalY + 30);
-            doc.line(145, finalY + 31, 190, finalY + 31);
-
-            doc.save(`Rekap_Absensi_${new Date().getTime()}.pdf`);
-            showToast("PDF BERHASIL DIUNDUH", "bg-indigo-600");
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.add('hidden');
-            if (id === 'scanModal' && html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().catch(() => {});
-            }
-        }
-
-        function showToast(msg, color) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-3xl text-white font-bold z-[100] shadow-xl text-[10px] uppercase tracking-widest transition-all ${color}`;
-            t.classList.remove('opacity-0');
-            t.classList.remove('pointer-events-none');
-            setTimeout(() => {
-                t.classList.add('opacity-0');
-                t.classList.add('pointer-events-none');
-            }, 3000);
-        }
-
-        window.onload = () => lucide.createIcons();
+        // Inisialisasi Lucide Icons & Render Data
+        window.onload = () => {
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            renderStudents();
+        };
     </script>
 </body>
 </html>
