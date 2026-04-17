@@ -3,15 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Absensi GPdI Immanuel - Face Recognition Edition</title>
+    <title>Portal Absensi GPdI Immanuel - Manual Input Edition</title>
     <!-- Framework & Library -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <!-- Library QR/Barcode Scanner -->
-    <script src="https://unpkg.com/html5-qrcode"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
@@ -44,17 +42,6 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        #reader {
-            width: 100%;
-            border: none !important;
-            border-radius: 1.5rem;
-            overflow: hidden;
-            background: #f1f5f9;
-        }
-        #reader__scan_region video {
-            border-radius: 1.5rem;
-            object-fit: cover;
-        }
         .scan-success {
             animation: pulse-green 0.5s ease-in-out;
         }
@@ -120,11 +107,11 @@
                     </div>
                 </div>
                 
-                <button onclick="openScanModal()" class="bg-emerald-500 text-white p-6 rounded-3xl shadow-lg flex items-center gap-4 hover:brightness-110 transition-all">
-                    <i data-lucide="scan-eye" class="w-6 h-6"></i>
+                <button onclick="openAbsensiModal()" class="bg-emerald-500 text-white p-6 rounded-3xl shadow-lg flex items-center gap-4 hover:brightness-110 transition-all">
+                    <i data-lucide="keyboard" class="w-6 h-6"></i>
                     <div class="text-left">
-                        <p class="text-[9px] font-bold opacity-80 uppercase tracking-widest">Absensi</p>
-                        <p class="text-sm font-black uppercase">Scan Wajah/QR</p>
+                        <p class="text-[9px] font-bold opacity-80 uppercase tracking-widest">Pencatatan</p>
+                        <p class="text-sm font-black uppercase">Input Absensi</p>
                     </div>
                 </button>
 
@@ -158,33 +145,33 @@
         </main>
     </div>
 
-    <!-- MODAL SCAN -->
-    <div id="scanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-6 backdrop-blur-md">
-        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 space-y-4 shadow-2xl">
+    <!-- MODAL INPUT ABSENSI MANUAL -->
+    <div id="absensiModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-6 backdrop-blur-md">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 space-y-6 shadow-2xl">
             <div class="flex justify-between items-center">
                 <div>
-                    <h3 class="text-lg font-black uppercase">Smart Scanner</h3>
-                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Mendukung Barcode & Deteksi Wajah</p>
+                    <h3 class="text-lg font-black uppercase">Input Absensi</h3>
+                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Masukkan ID Murid Secara Manual</p>
                 </div>
-                <button onclick="closeModal('scanModal')" class="bg-slate-100 p-2 rounded-full hover:bg-rose-100 hover:text-rose-500 transition-colors">
+                <button onclick="closeModal('absensiModal')" class="bg-slate-100 p-2 rounded-full hover:bg-rose-100 hover:text-rose-500 transition-colors">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
             
-            <div class="relative">
-                <div id="reader" class="shadow-inner"></div>
-                <!-- Overlay Deteksi Wajah -->
-                <div id="faceScanOverlay" class="absolute inset-0 border-4 border-indigo-500/30 rounded-[1.5rem] pointer-events-none flex flex-col items-center justify-center">
-                    <div class="w-48 h-48 border-2 border-indigo-400 border-dashed rounded-full opacity-40"></div>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[9px] font-black uppercase text-slate-400 mb-2 block">ID Murid / Nama</label>
+                    <input type="text" id="manualInput" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 font-black text-center text-lg outline-none focus:border-emerald-500 transition-all uppercase" placeholder="CONTOH: IMN-001" onkeyup="if(event.key === 'Enter') handleManualSubmit()">
                 </div>
-            </div>
-            
-            <div class="pt-2">
-                <p class="text-[10px] text-slate-400 text-center font-bold uppercase mb-2">Input ID Manual</p>
-                <div class="flex gap-2">
-                    <input type="text" id="manualInput" class="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 font-black text-center text-sm outline-none focus:ring-2 focus:ring-emerald-500 uppercase" placeholder="CONTOH: IMN-001">
-                    <button onclick="processScan(document.getElementById('manualInput').value)" class="bg-emerald-500 text-white px-6 rounded-xl font-black text-[10px] uppercase shadow-lg hover:bg-emerald-600 transition-all">Input</button>
+                
+                <div class="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+                    <p class="text-[8px] font-bold text-indigo-600 uppercase mb-1">Tips:</p>
+                    <p class="text-[9px] text-indigo-400 leading-relaxed font-semibold">Gunakan ID lengkap seperti tertera pada kartu atau nama lengkap murid untuk pencarian data.</p>
                 </div>
+
+                <button onclick="handleManualSubmit()" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-emerald-100 hover:bg-emerald-600 hover:-translate-y-0.5 transition-all">
+                    Catat Kehadiran
+                </button>
             </div>
         </div>
     </div>
@@ -226,10 +213,8 @@
         </div>
     </div>
 
-    <canvas id="hiddenBarcode" class="hidden"></canvas>
-
     <script>
-        // Data Murid (Lengkap dari versi sebelumnya)
+        // Data Murid
         const currentStudents = [
             { id: "IMN-001", name: "Eldo Desenta Purba", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1N2mWe7lwcrPFlGD9AKr5ywJQrlImpKSf" },
             { id: "IMN-002", name: "Fahlepta Surbakti", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1tioPYfFwvohFegtc5Qdwu2loEWYmL9zw" },
@@ -291,17 +276,20 @@
             { id: "IMN-0033", name: "Axel Kenneth Ginting", age: 3, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "1lU5KDXuWwlbmpQI0Afn0hKV4oPZ0puVU" }
         ];
 
-        let html5QrCode = null;
         let currentFilter = "Semua";
         let isProcessing = false;
 
+        // Login Handler
         function handleLogin(e) {
             e.preventDefault();
-            if(document.getElementById('username').value === "Admin" && document.getElementById('password').value === "Admin") {
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            if(u === "Admin" && p === "Admin") {
                 document.getElementById('loginPage').classList.add('hidden');
                 document.getElementById('dashboardPage').classList.remove('hidden');
                 renderDashboard();
                 showToast("LOGIN BERHASIL", "bg-indigo-600");
+                lucide.createIcons();
             } else {
                 showToast("USERNAME/PASS SALAH", "bg-rose-500");
             }
@@ -312,6 +300,7 @@
             document.getElementById('loginPage').classList.remove('hidden');
         }
 
+        // Dashboard & Filter Logic
         function renderDashboard() {
             const grid = document.getElementById('studentGrid');
             const filtered = currentFilter === "Semua" ? currentStudents : currentStudents.filter(s => s.class === currentFilter);
@@ -323,7 +312,7 @@
                 grid.innerHTML += `
                     <div id="card-${s.id}" class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm text-center transition-all duration-300">
                         <div class="relative inline-block">
-                             <img src="${photoUrl}" class="w-20 h-20 rounded-2xl mx-auto mb-2 object-cover bg-slate-50 border-2 border-indigo-50">
+                             <img src="${photoUrl}" class="w-20 h-20 rounded-2xl mx-auto mb-2 object-cover bg-slate-50 border-2 border-indigo-50" onerror="this.src='https://api.dicebear.com/7.x/initials/png?seed=${s.name}'">
                              <div class="absolute -top-1 -right-1 bg-indigo-600 text-white text-[8px] font-bold px-2 py-0.5 rounded-full">${s.age} Thn</div>
                         </div>
                         <h4 class="text-[10px] font-black uppercase truncate px-1 text-slate-800">${s.name}</h4>
@@ -339,7 +328,6 @@
                     </div>
                 `;
             });
-            lucide.createIcons();
         }
 
         function filterClass(c) {
@@ -355,197 +343,158 @@
             renderDashboard();
         }
 
-        async function openScanModal() {
-            document.getElementById('scanModal').classList.remove('hidden');
-            html5QrCode = new Html5Qrcode("reader");
-            
-            const qrConfig = { 
-                fps: 20, 
-                qrbox: { width: 280, height: 180 },
-                aspectRatio: 1.0 
-            };
-            
-            try {
-                await html5QrCode.start(
-                    { facingMode: "environment" }, 
-                    qrConfig, 
-                    (decodedText) => {
-                        if(!isProcessing) {
-                            processScan(decodedText);
-                        }
-                    }
-                );
-                
-                // Mulai deteksi wajah berkala saat kamera aktif
-                // startFaceRecognitionLoop();
-            } catch (err) {
-                showToast("IZINKAN KAMERA", "bg-amber-500");
-                console.error(err);
-            }
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.add('hidden');
-            if (id === 'scanModal' && html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    html5QrCode.clear();
-                }).catch(e => console.error(e));
-            }
-        }
-
-        // Fungsi Absensi Inti
-        function processScan(id) {
-            if(isProcessing) return;
-            
-            isProcessing = true;
-            const cleanId = id.trim().toUpperCase();
-            const idx = currentStudents.findIndex(s => s.id === cleanId || s.name.toUpperCase() === cleanId);
-
-            if (idx !== -1) {
-                const student = currentStudents[idx];
-                student.attendance += 1;
-                
-                showToast(`BERHASIL: ${student.name}`, "bg-emerald-500");
-                
-                // Voice Feedback
-                const msg = new SpeechSynthesisUtterance(`Halo ${student.name}, kehadiran berhasil dicatat`);
-                msg.lang = 'id-ID';
-                window.speechSynthesis.speak(msg);
-
-                renderDashboard();
-                
-                const card = document.getElementById(`card-${student.id}`);
-                if(card) {
-                    card.classList.add('scan-success', 'ring-4', 'ring-emerald-400');
-                    setTimeout(() => {
-                        card.classList.remove('scan-success', 'ring-4', 'ring-emerald-400');
-                    }, 2000);
-                }
-
-                document.getElementById('manualInput').value = "";
-                
-                // Cooldown 3 detik agar tidak double scan
-                setTimeout(() => {
-                    isProcessing = false;
-                }, 3000);
-
-            } else {
-                showToast("DATA TIDAK DIKENALI", "bg-rose-500");
-                setTimeout(() => { isProcessing = false; }, 2000);
-            }
-        }
-
-        async function getBase64ImageFromUrl(imageUrl) {
-            try {
-                const response = await fetch(imageUrl);
-                const blob = await response.blob();
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(blob);
-                });
-            } catch (e) { return null; }
-        }
-
-        async function handleGenerateKIA() {
-            const filter = document.getElementById('kiaClassCategory').value;
-            const filtered = filter === "Semua" ? currentStudents : currentStudents.filter(s => s.class === filter);
-            
-            document.getElementById('loadingText').innerText = "MENYIAPKAN KARTU...";
-            document.getElementById('loadingOverlay').style.display = 'flex';
-            
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'mm', 'a4');
-            const cardW = 85, cardH = 55;
-            const marginX = 10, marginY = 15, gap = 5;
-
-            for(let i=0; i<filtered.length; i++) {
-                const s = filtered[i];
-                if(i > 0 && i % 8 === 0) doc.addPage();
-                const col = i % 2, row = Math.floor((i % 8) / 2);
-                const x = marginX + (col * (cardW + gap)), y = marginY + (row * (cardH + gap));
-
-                // Desain Kartu (Update agar siap cetak)
-                doc.setDrawColor(200); doc.setFillColor(255);
-                doc.roundedRect(x, y, cardW, cardH, 4, 4, 'FD');
-                
-                doc.setFillColor(79, 70, 229);
-                doc.roundedRect(x, y, cardW, 10, 4, 4, 'F');
-                doc.rect(x, y+6, cardW, 4, 'F'); 
-                
-                doc.setTextColor(255); doc.setFontSize(8); doc.setFont("helvetica", "bold");
-                doc.text("KARTU IDENTITAS ANAK - GPdI", x + cardW/2, y + 6.5, { align: "center" });
-
-                const photoUrl = s.photo ? `https://lh3.googleusercontent.com/d/${s.photo}` : null;
-                doc.setDrawColor(240); doc.setFillColor(245);
-                doc.roundedRect(x + 5, y + 14, 20, 25, 2, 2, 'FD');
-                
-                if(photoUrl) {
-                    const img = await getBase64ImageFromUrl(photoUrl);
-                    if(img) doc.addImage(img, 'JPEG', x + 6, y + 15, 18, 23);
-                }
-
-                doc.setTextColor(40); doc.setFontSize(9); doc.setFont("helvetica", "bold");
-                doc.text(s.name.toUpperCase(), x + 28, y + 18);
-                
-                doc.setFontSize(7); doc.setTextColor(100); doc.setFont("helvetica", "normal");
-                doc.text(`ID ABSENSI`, x + 28, y + 23);
-                doc.setTextColor(60); doc.text(`: ${s.id}`, x + 45, y + 23);
-                
-                doc.setTextColor(100); doc.text(`USIA`, x + 28, y + 27);
-                doc.setTextColor(60); doc.text(`: ${s.age} Tahun`, x + 45, y + 27);
-                
-                doc.setTextColor(100); doc.text(`PENDIDIKAN`, x + 28, y + 31);
-                doc.setTextColor(60); doc.text(`: ${s.school}`, x + 45, y + 31);
-                
-                doc.setTextColor(100); doc.text(`KELAS SM`, x + 28, y + 35);
-                doc.setTextColor(60); doc.text(`: ${s.class}`, x + 45, y + 35);
-
-                const canvas = document.getElementById('hiddenBarcode');
-                JsBarcode(canvas, s.id, { 
-                    format: "CODE128", 
-                    displayValue: false, 
-                    margin: 0,
-                    lineColor: "#1e293b"
-                });
-                doc.addImage(canvas.toDataURL(), 'PNG', x + cardW - 35, y + cardH - 12, 30, 8);
-                doc.setFontSize(6); doc.text(s.id, x + cardW - 20, y + cardH - 3.5, { align: "center" });
-            }
-            doc.save(`KIA_GPdI_READY_${Date.now()}.pdf`);
-            document.getElementById('loadingOverlay').style.display = 'none';
-        }
-
-        function handleGenerateReport() {
-            const filter = document.getElementById('printClassCategory').value;
-            const teacher = document.getElementById('teacherName').value || "..................";
-            const filtered = filter === "Semua" ? currentStudents : currentStudents.filter(s => s.class === filter);
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            doc.setFontSize(16); doc.text(`DAFTAR HADIR SEKOLAH MINGGU`, 105, 15, { align: "center" });
-            doc.setFontSize(10); doc.text(`Kategori: ${filter} | Guru: ${teacher} | Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 105, 22, { align: "center" });
-            
-            const body = filtered.map(s => [s.id, s.name, s.age, s.school, s.class, s.attendance]);
-            doc.autoTable({ 
-                startY: 30, 
-                head: [['ID', 'NAMA MURID', 'USIA', 'SEKOLAH', 'KELAS', 'HADIR']], 
-                body: body,
-                theme: 'grid',
-                headStyles: { fillColor: [79, 70, 229] }
-            });
-            doc.save(`LAPORAN_HADIR_${filter}.pdf`);
+        // Modal Management
+        function openAbsensiModal() {
+            document.getElementById('absensiModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('manualInput').focus(), 100);
         }
 
         function openPrintModal() { document.getElementById('printModal').classList.remove('hidden'); }
         function openKIAModal() { document.getElementById('kiaModal').classList.remove('hidden'); }
 
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // Core Manual Absensi Logic
+        function handleManualSubmit() {
+            if(isProcessing) return;
+            
+            const inputVal = document.getElementById('manualInput').value.trim().toUpperCase();
+            if(!inputVal) return;
+
+            isProcessing = true;
+            
+            // Search by ID or EXACT Name
+            const student = currentStudents.find(s => s.id === inputVal || s.name.toUpperCase() === inputVal);
+            
+            if(student) {
+                student.attendance += 1;
+                showToast(`BERHASIL: ${student.name}`, "bg-emerald-500");
+                renderDashboard();
+                
+                // Highlight the card
+                const card = document.getElementById(`card-${student.id}`);
+                if(card) {
+                    card.classList.add('scan-success', 'ring-4', 'ring-emerald-400');
+                    setTimeout(() => card.classList.remove('scan-success', 'ring-4', 'ring-emerald-400'), 2000);
+                }
+
+                // Audio Welcome
+                const speech = new SpeechSynthesisUtterance(`Halo ${student.name}, kehadiran berhasil dicatat`);
+                speech.lang = 'id-ID';
+                window.speechSynthesis.speak(speech);
+
+                document.getElementById('manualInput').value = "";
+                setTimeout(() => {
+                    isProcessing = false;
+                    document.getElementById('manualInput').focus();
+                }, 1000);
+            } else {
+                showToast("DATA TIDAK DITEMUKAN", "bg-rose-500");
+                setTimeout(() => isProcessing = false, 1000);
+            }
+        }
+
+        // Global Toast
         function showToast(msg, color) {
             const t = document.getElementById('toast');
             t.innerText = msg;
-            t.className = `fixed top-5 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full text-white font-bold z-[100] shadow-2xl text-[10px] uppercase tracking-widest transition-all ${color}`;
-            t.classList.remove('opacity-0');
-            setTimeout(() => t.classList.add('opacity-0'), 3000);
+            t.className = `fixed top-5 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full text-white font-bold z-[100] shadow-2xl text-[10px] uppercase tracking-widest transition-all duration-300 pointer-events-none ${color}`;
+            t.style.opacity = "1";
+            setTimeout(() => t.style.opacity = "0", 3000);
+        }
+
+        // Helpers for PDF
+        async function getBase64FromUrl(url) {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                });
+            } catch { return null; }
+        }
+
+        // Report & KIA Generation (Sesuai Permintaan Sebelumnya)
+        async function handleGenerateKIA() {
+            const overlay = document.getElementById('loadingOverlay');
+            const category = document.getElementById('kiaClassCategory').value;
+            const filtered = category === "Semua" ? currentStudents : currentStudents.filter(s => s.class === category);
+            
+            overlay.style.display = 'flex';
+            document.getElementById('loadingText').innerText = "MENYIAPKAN KARTU...";
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const w = 85, h = 55, gap = 5;
+
+            for(let i=0; i<filtered.length; i++) {
+                if(i > 0 && i % 8 === 0) doc.addPage();
+                const s = filtered[i];
+                const col = i % 2, row = Math.floor((i % 8) / 2);
+                const x = 10 + (col * (w + gap)), y = 10 + (row * (h + gap));
+
+                doc.setDrawColor(220); doc.setFillColor(255);
+                doc.roundedRect(x, y, w, h, 3, 3, 'FD');
+                
+                doc.setFillColor(79, 70, 229);
+                doc.roundedRect(x, y, w, 10, 3, 3, 'F');
+                doc.rect(x, y+5, w, 5, 'F');
+                doc.setTextColor(255); doc.setFontSize(8); 
+                doc.text("KARTU ABSENSI GPdI IMMANUEL", x + w/2, y + 6, {align:'center'});
+
+                doc.setFillColor(245);
+                doc.roundedRect(x + 5, y + 14, 20, 25, 2, 2, 'F');
+                const photoData = await getBase64FromUrl(`https://lh3.googleusercontent.com/d/${s.photo}`);
+                if(photoData) doc.addImage(photoData, 'JPEG', x + 6, y + 15, 18, 23);
+
+                doc.setTextColor(30); doc.setFontSize(9); doc.text(s.name.toUpperCase(), x + 28, y + 18);
+                doc.setFontSize(7); doc.setTextColor(100);
+                doc.text(`ID: ${s.id}`, x + 28, y + 23);
+                doc.text(`KELAS: ${s.class}`, x + 28, y + 27);
+                doc.text(`SEKOLAH: ${s.school}`, x + 28, y + 31);
+
+                const canvas = document.createElement('canvas');
+                JsBarcode(canvas, s.id, { format: "CODE128", height: 30, displayValue: false });
+                doc.addImage(canvas.toDataURL(), 'PNG', x + 28, y + 35, 50, 12);
+            }
+
+            doc.save(`KIA_GPdI_${category}.pdf`);
+            overlay.style.display = 'none';
+            closeModal('kiaModal');
+        }
+
+        function handleGenerateReport() {
+            const category = document.getElementById('printClassCategory').value;
+            const teacher = document.getElementById('teacherName').value || "Guru Pembimbing";
+            const filtered = category === "Semua" ? currentStudents : currentStudents.filter(s => s.class === category);
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFontSize(16); doc.text("LAPORAN KEHADIRAN SEKOLAH MINGGU", 105, 20, {align:'center'});
+            doc.setFontSize(10); doc.text(`GPdI Immanuel Berastagi | Kelas: ${category}`, 105, 28, {align:'center'});
+            doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 105, 34, {align:'center'});
+
+            const body = filtered.map((s, i) => [i+1, s.id, s.name, s.class, s.attendance > 0 ? 'HADIR' : 'ABSEN']);
+            
+            doc.autoTable({
+                startY: 45,
+                head: [['NO', 'ID', 'NAMA MURID', 'KELAS', 'STATUS']],
+                body: body,
+                theme: 'grid',
+                headStyles: { fillColor: [79, 70, 229] }
+            });
+
+            const finalY = doc.lastAutoTable.finalY + 20;
+            doc.text("Mengetahui,", 150, finalY);
+            doc.text(teacher, 150, finalY + 25);
+
+            doc.save(`Laporan_Absensi_${category}.pdf`);
+            closeModal('printModal');
         }
 
         window.onload = () => lucide.createIcons();
