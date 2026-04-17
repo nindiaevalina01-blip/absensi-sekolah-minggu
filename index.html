@@ -3,322 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Absensi GPdI Immanuel (Rekap & Guru Sign)</title>
+    <title>E-Absensi GPdI Immanuel - Cetak Kartu</title>
+    <!-- Framework & Library -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Library untuk PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
- 
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f4f7fa; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: #f4f7fa; 
+        }
         .btn-grad { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
-        .btn-rekap { background: linear-gradient(135deg, #0f172a 0%, #334155 100%); }
         .btn-print-all { background: linear-gradient(135deg, #059669 0%, #10b981 100%); }
         
         @media print {
             body * { visibility: hidden; }
             #printArea, #printArea * { visibility: visible; }
-            #printArea { position: absolute; left: 0; top: 0; width: 100%; border: none; shadow: none; }
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; }
             .no-print { display: none !important; }
         }
     </style>
 </head>
 <body class="antialiased text-gray-800">
 
- <div id="toast" class="opacity-0 pointer-events-none fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-3xl text-white font-bold z-[100] shadow-xl text-[10px] uppercase tracking-widest transition-all duration-300"></div>
+    <!-- Notifikasi Toast -->
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-3xl text-white font-bold z-[100] shadow-xl text-[10px] uppercase tracking-widest transition-all duration-300 opacity-0 pointer-events-none"></div>
 
-    <!-- Halaman Login -->
-    <div id="loginPage" class="min-h-screen flex items-center justify-center p-6">
-        <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-sm:max-w-xs text-center">
-            <h1 class="text-2xl font-black mb-8 tracking-tight uppercase">PORTAL ABSENSI SEKOLAH MINGGU</h1>
-            <div class="space-y-4">
-                <input type="text" id="username" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border outline-none" placeholder="Username" value="Admin">
-                <input type="password" id="password" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border outline-none" placeholder="Password" value="Berastagi2024">
-                <button onclick="handleLogin()" class="w-full btn-grad text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest">Masuk</button>
-            </div>
-        </div>
-    </div>
-    
-
-    <!-- Dashboard -->
-    <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
+    <!-- Halaman Utama (Dashboard) -->
+    <div id="dashboardPage" class="min-h-screen flex flex-col">
         <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-40 p-5 flex justify-between items-center border-b">
-            <span class="font-extrabold text-[10px] uppercase tracking-wider text-indigo-900">Portal Absensi GPdI</span>
-            <button onclick="location.reload()" class="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center"><i data-lucide="power" class="w-4 h-4"></i></button>
+            <span class="font-extrabold text-[10px] uppercase tracking-wider text-indigo-900">Portal Absensi GPdI Immanuel</span>
+            <div class="flex gap-2">
+                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <span class="text-[8px] font-bold text-gray-400">ONLINE</span>
+            </div>
         </nav>
 
         <main class="max-w-4xl mx-auto w-full p-6 space-y-8">
-            <!-- Statistik -->
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-white p-6 rounded-[2rem] shadow-sm flex items-center gap-5">
-                    <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center"><i data-lucide="users" class="w-6 h-6"></i></div>
+            <!-- Statistik Singkat -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm flex items-center gap-5 border">
+                    <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="users" class="w-6 h-6"></i>
+                    </div>
                     <div>
-                        <p class="text-[9px] font-bold text-gray-400 uppercase">Total Murid</p>
+                        <p class="text-[9px] font-bold text-gray-400 uppercase">Daftar Murid</p>
                         <p id="statTotalMurid" class="text-2xl font-black">0</p>
                     </div>
                 </div>
-                <div class="bg-white p-6 rounded-[2rem] shadow-sm flex items-center gap-5">
-                    <div class="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center"><i data-lucide="check-circle" class="w-6 h-6"></i></div>
-                    <div>
-                        <p class="text-[9px] font-bold text-gray-400 uppercase">Total Hadir</p>
-                        <p id="statTotalAbsensi" class="text-2xl font-black">0</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tombol Aksi -->
-            <div class="flex flex-col gap-3">
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <button onclick="startScan()" class="flex-1 btn-grad text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-3">
-                        <i data-lucide="scan-line" class="w-5 h-5"></i> Scan Barcode Kehadiran
-                    </button>
-                    <button onclick="openTeacherModal()" class="btn-rekap text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-3">
-                        <i data-lucide="file-text" class="w-5 h-5"></i> Download Rekap PDF
-                    </button>
-                </div>
-                <!-- Tombol Baru untuk Cetak Semua Kartu -->
-                <button onclick="downloadAllCardsPDF()" class="w-full btn-print-all text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-3 shadow-lg shadow-emerald-100">
-                    <i data-lucide="printer" class="w-5 h-5"></i> Cetak Semua Kartu Identitas (PDF)
+                <button onclick="downloadAllCardsPDF()" class="w-full btn-print-all text-white px-6 py-5 rounded-[2rem] font-black text-[12px] uppercase flex items-center justify-center gap-3 shadow-lg hover:scale-[1.02] transition-transform">
+                    <i data-lucide="printer" class="w-6 h-6"></i> Cetak Semua Kartu + Foto
                 </button>
             </div>
 
-            <!-- List Kategori -->
             <div class="space-y-4">
-                <h2 class="text-lg font-black uppercase italic">Kategori Kelas</h2>
-                <div class="flex gap-2 overflow-x-auto pb-4">
-                    <button onclick="renderStudentList('Bintang')" class="whitespace-nowrap px-8 py-5 bg-white rounded-[1.5rem] shadow-sm font-bold text-[10px] uppercase border hover:border-indigo-500 transition-all">Bintang</button>
-                    <button onclick="renderStudentList('Cahaya')" class="whitespace-nowrap px-8 py-5 bg-white rounded-[1.5rem] shadow-sm font-bold text-[10px] uppercase border hover:border-indigo-500 transition-all">Cahaya</button>
-                    <button onclick="renderStudentList('Pra Remaja')" class="whitespace-nowrap px-8 py-5 bg-white rounded-[1.5rem] shadow-sm font-bold text-[10px] uppercase border hover:border-indigo-500 transition-all">Pra Remaja</button>
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-black uppercase italic">Daftar Murid</h2>
+                    <div class="flex gap-2" id="filterContainer">
+                        <!-- Filter Kelas -->
+                    </div>
                 </div>
-            </div>
-
-            <div id="classContainer" class="hidden space-y-4">
-                <h3 id="currentClassName" class="text-xs font-black text-indigo-600 uppercase px-2">Kategori: -</h3>
-                <div id="studentList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                <div id="studentList" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Data Murid akan muncul di sini -->
+                </div>
             </div>
         </main>
     </div>
 
-    <!-- Modal Input Nama Guru (Sebelum PDF) -->
-    <div id="teacherModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
-            <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
-                <i data-lucide="user-check" class="w-8 h-8"></i>
-            </div>
-            <div>
-                <h3 class="text-lg font-black uppercase tracking-tight">Nama Pengabsen</h3>
-                <p class="text-xs text-gray-500 font-medium">Masukkan nama guru yang bertugas hari ini</p>
-            </div>
-            <input type="text" id="teacherNameInput" class="w-full px-6 py-4 rounded-2xl bg-gray-50 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-center" placeholder="Nama Lengkap Guru">
-            <div class="flex gap-3">
-                <button onclick="closeModal('teacherModal')" class="flex-1 bg-gray-100 text-gray-500 py-4 rounded-2xl font-black text-[10px] uppercase">Batal</button>
-                <button onclick="downloadRekapPDF()" class="flex-1 btn-grad text-white py-4 rounded-2xl font-black text-[10px] uppercase">Download</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal ID Card (Bingkai Foto Lebih Panjang/Portrait) -->
+    <!-- Modal Preview Kartu -->
     <div id="cardModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-        <div id="printArea" class="bg-white w-full max-w-[420px] rounded-[3rem] shadow-2xl overflow-hidden border">
-            <div class="bg-indigo-600 p-6 text-white flex justify-between items-center">
-                <span class="text-[9px] font-black uppercase tracking-widest">GPdI Immanuel Berastagi</span>
-                <span id="cardIdText" class="text-[9px] font-bold opacity-80">IMN-000</span>
-            </div>
-
-            <div class="p-8">
-                <!-- Layout Header Kartu dengan Foto Lebih Panjang -->
-                <div class="flex flex-col gap-6 items-center text-center">
-                    <div class="relative">
-                        <img id="cardPhoto" src="" class="w-40 h-52 rounded-[2rem] bg-indigo-50 border-4 border-indigo-100 shadow-xl object-cover">
-                        <!-- Badge Usia -->
-                        <div class="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white px-5 py-1.5 rounded-full shadow-lg border border-indigo-100">
-                             <p id="cardAge" class="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">- Thn</p>
-                        </div>
-                    </div>
-                    
-                    <div class="space-y-1 mt-4">
-                        <p class="text-[8px] font-bold text-gray-400 uppercase tracking-[0.2em]">Nama Murid</p>
-                        <h2 id="cardName" class="font-black text-2xl text-indigo-950 leading-tight">Nama Murid</h2>
-                    </div>
-
-                    <div class="flex gap-8 justify-center w-full bg-gray-50 p-5 rounded-[2rem] border border-gray-100">
-                        <div>
-                            <p class="text-[8px] font-bold text-gray-400 uppercase">ID Murid</p>
-                            <p id="cardIdDisplay" class="text-xs font-black text-gray-700">IMN-XXX</p>
-                        </div>
-                        <div class="w-px h-8 bg-gray-200"></div>
-                        <div>
-                            <p class="text-[8px] font-bold text-gray-400 uppercase">Hadir</p>
-                            <p id="cardAttendance" class="text-xs font-black text-indigo-600">0 Kali</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Bagian Barcode -->
-                <div class="mt-8 flex flex-col items-center border-t border-dashed border-gray-200 pt-6">
-                    <svg id="barcodeCanvas"></svg>
-                    <p class="text-[7px] font-bold text-gray-400 mt-2 tracking-[0.3em] uppercase italic">Scan for Attendance</p>
-                </div>
-            </div>
-
-            <div class="p-6 bg-gray-50 flex gap-3 no-print">
-                <button onclick="window.print()" class="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-200">Cetak Kartu</button>
-                <button onclick="closeModal('cardModal')" class="flex-1 bg-white border text-gray-500 py-4 rounded-2xl font-black text-[10px] uppercase">Tutup</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Scan -->
-    <div id="scanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-6">
-        <div class="w-full max-w-xs text-center">
-            <div id="reader" class="bg-white"></div>
-            <button onclick="closeModal('scanModal')" class="mt-8 text-white/50 text-[10px] font-bold uppercase underline">Batal</button>
-        </div>
-    </div>
-
-    <!-- Canvas Tersembunyi untuk Barcode Batch PDF -->
-    <canvas id="hiddenBarcode" class="hidden"></canvas>
-
-    <script><!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Absensi GPdI Immanuel (Rekap & Guru Sign)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Library untuk PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f4f7fa; }
-        .btn-grad { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
-        .btn-rekap { background: linear-gradient(135deg, #0f172a 0%, #334155 100%); }
-        .btn-print-all { background: linear-gradient(135deg, #059669 0%, #10b981 100%); }
-        
-        @media print {
-            body * { visibility: hidden; }
-            #printArea, #printArea * { visibility: visible; }
-            #printArea { position: absolute; left: 0; top: 0; width: 100%; border: none; shadow: none; }
-            .no-print { display: none !important; }
-        }
-    </style>
-</head>
-<body class="antialiased text-gray-800">
-
-    <div id="toast" class="opacity-0 pointer-events-none fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-3xl text-white font-bold z-[100] shadow-xl text-[10px] uppercase tracking-widest transition-all duration-300"></div>
-
-    <!-- Halaman Login -->
-    <div id="loginPage" class="min-h-screen flex items-center justify-center p-6">
-        <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-sm:max-w-xs text-center">
-            <h1 class="text-2xl font-black mb-8 tracking-tight uppercase">PORTAL ABSENSI SEKOLAH MINGGU</h1>
-            <div class="space-y-4">
-                <input type="text" id="username" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border outline-none" placeholder="Username" value="Admin">
-                <input type="password" id="password" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border outline-none" placeholder="Password" value="Berastagi2024">
-                <button onclick="handleLogin()" class="w-full btn-grad text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest">Masuk</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Dashboard -->
-    <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
-        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-40 p-5 flex justify-between items-center border-b">
-            <span class="font-extrabold text-[10px] uppercase tracking-wider text-indigo-900">Portal Absensi GPdI</span>
-            <button onclick="location.reload()" class="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center"><i data-lucide="power" class="w-4 h-4"></i></button>
-        </nav>
-
-        <main class="max-w-4xl mx-auto w-full p-6 space-y-8">
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-white p-6 rounded-[2rem] shadow-sm flex items-center gap-5">
-                    <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center"><i data-lucide="users" class="w-6 h-6"></i></div>
-                    <div>
-                        <p class="text-[9px] font-bold text-gray-400 uppercase">Total Murid</p>
-                        <p id="statTotalMurid" class="text-2xl font-black">0</p>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-[2rem] shadow-sm flex items-center gap-5">
-                    <div class="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center"><i data-lucide="check-circle" class="w-6 h-6"></i></div>
-                    <div>
-                        <p class="text-[9px] font-bold text-gray-400 uppercase">Total Hadir</p>
-                        <p id="statTotalAbsensi" class="text-2xl font-black">0</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex flex-col gap-3">
-                <button onclick="downloadAllCardsPDF()" class="w-full btn-print-all text-white px-6 py-5 rounded-3xl font-black text-[12px] uppercase flex items-center justify-center gap-3 shadow-xl">
-                    <i data-lucide="printer" class="w-6 h-6"></i> Cetak Seluruh Kartu + Foto (PDF)
-                </button>
-                <div class="grid grid-cols-2 gap-3">
-                    <button onclick="startScan()" class="btn-grad text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2">
-                        <i data-lucide="scan-line" class="w-4 h-4"></i> Scan
-                    </button>
-                    <button onclick="openTeacherModal()" class="btn-rekap text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2">
-                        <i data-lucide="file-text" class="w-4 h-4"></i> Rekap
-                    </button>
-                </div>
-            </div>
-
-            <div class="space-y-4">
-                <h2 class="text-lg font-black uppercase italic">Kategori Kelas</h2>
-                <div id="classTabs" class="flex gap-2 overflow-x-auto pb-2">
-                    <button onclick="renderStudentList('Bintang')" class="px-6 py-3 bg-white rounded-2xl shadow-sm font-bold text-[10px] uppercase border">Bintang</button>
-                    <button onclick="renderStudentList('Cahaya')" class="px-6 py-3 bg-white rounded-2xl shadow-sm font-bold text-[10px] uppercase border">Cahaya</button>
-                </div>
-                <div id="studentList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Modal Cetak (Individual) -->
-    <div id="cardModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-        <div id="printArea" class="bg-white w-full max-w-[380px] rounded-[3rem] shadow-2xl overflow-hidden border">
-            <div class="bg-indigo-600 p-6 text-white text-center">
-                <span class="text-[9px] font-black uppercase tracking-widest">GPdI Immanuel Berastagi</span>
+        <div id="printArea" class="bg-white w-full max-w-[350px] rounded-[3rem] shadow-2xl overflow-hidden border">
+            <div class="bg-indigo-600 p-4 text-white text-center">
+                <p class="text-[8px] font-black uppercase tracking-[0.2em]">Sekolah Minggu GPdI Immanuel</p>
             </div>
             <div class="p-8 flex flex-col items-center">
-                <img id="cardPhoto" src="" class="w-36 h-48 rounded-[2rem] bg-indigo-50 object-cover shadow-lg border-2 border-indigo-100">
-                <h2 id="cardName" class="font-black text-xl text-indigo-950 mt-4 text-center uppercase tracking-tight"></h2>
-                <p id="cardIdDisplay" class="text-xs font-bold text-gray-400 mt-1"></p>
+                <img id="cardPhoto" src="" class="w-32 h-40 rounded-2xl bg-indigo-50 object-cover shadow-md border-4 border-white mb-4">
+                <h2 id="cardName" class="font-black text-lg text-indigo-950 text-center uppercase leading-tight"></h2>
+                <p id="cardIdDisplay" class="text-[10px] font-bold text-gray-400 mt-1"></p>
                 <div class="mt-6">
-                    <svg id="barcodeCanvas"></svg>
+                    <canvas id="barcodePreview"></canvas>
                 </div>
             </div>
-            <div class="p-6 bg-gray-50 flex gap-3 no-print">
-                <button onclick="window.print()" class="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase">Cetak</button>
-                <button onclick="closeModal('cardModal')" class="flex-1 bg-white border text-gray-500 py-4 rounded-2xl font-black text-[10px] uppercase">Tutup</button>
+            <div class="p-4 bg-gray-50 flex gap-2 no-print">
+                <button onclick="window.print()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold text-[10px] uppercase">Cetak</button>
+                <button onclick="closeModal('cardModal')" class="flex-1 bg-white border text-gray-400 py-3 rounded-xl font-bold text-[10px] uppercase">Tutup</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal Input Guru -->
-    <div id="teacherModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 text-center space-y-6">
-            <h3 class="text-lg font-black uppercase">Nama Guru Pengabsen</h3>
-            <input type="text" id="teacherNameInput" class="w-full px-6 py-4 rounded-2xl bg-gray-50 border outline-none text-center font-bold" placeholder="Nama Lengkap">
-            <div class="flex gap-3">
-                <button onclick="closeModal('teacherModal')" class="flex-1 bg-gray-100 py-4 rounded-2xl font-black text-[10px] uppercase">Batal</button>
-                <button onclick="downloadRekapPDF()" class="flex-1 btn-grad text-white py-4 rounded-2xl font-black text-[10px] uppercase">Download</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="scanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-6">
-        <div id="reader" class="bg-white rounded-3xl overflow-hidden w-full max-w-xs"></div>
-        <button onclick="closeModal('scanModal')" class="fixed bottom-10 text-white/50 text-xs font-bold uppercase underline">Tutup</button>
-    </div>
-
+    <!-- Canvas tersembunyi untuk barcode PDF -->
     <canvas id="hiddenBarcode" class="hidden"></canvas>
 
     <script>
+        // Data Murid
         const students = [
             { id: "IMN-001", name: "Eldo Desenta Purba", age:9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1N2mWe7lwcrPFlGD9AKr5ywJQrlImpKSf" },
             { id: "IMN-002", name: "Fahlepta Surbakti", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1tioPYfFwvohFegtc5Qdwu2loEWYmL9zw" },
