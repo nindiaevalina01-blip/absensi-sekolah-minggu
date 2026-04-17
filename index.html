@@ -284,7 +284,7 @@
             e.preventDefault();
             const u = document.getElementById('username').value;
             const p = document.getElementById('password').value;
-            if(u === "Admin" && p === "Admin") {
+            if(u === "SM2026" && p === "Imn2026") {
                 document.getElementById('loginPage').classList.add('hidden');
                 document.getElementById('dashboardPage').classList.remove('hidden');
                 renderDashboard();
@@ -479,7 +479,7 @@
             doc.setFontSize(10); doc.text(`GPdI Immanuel Berastagi | Kelas: ${category}`, 105, 28, {align:'center'});
             doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 105, 34, {align:'center'});
 
-            const body = filtered.map((s, i) => [i+1, s.id, s.name, s.class, s.attendance > 0 ? 'HADIR' : 'ABSEN']);
+            const body = filtered.map((s, i) => [i+1, s.id, s.name, s.class, s.attendance > 0 ? '1' : '0']);
             
             doc.autoTable({
                 startY: 45,
