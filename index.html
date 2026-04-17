@@ -17,12 +17,13 @@
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f4f7fa; }
         .btn-grad { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
         .btn-rekap { background: linear-gradient(135deg, #0f172a 0%, #334155 100%); }
+        .btn-print-all { background: linear-gradient(135deg, #059669 0%, #10b981 100%); }
         #reader { border-radius: 2rem; overflow: hidden; border: none !important; }
         
         @media print {
             body * { visibility: hidden; }
             #printArea, #printArea * { visibility: visible; }
-            #printArea { position: absolute; left: 0; top: 0; width: 100%; }
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; border: none; shadow: none; }
             .no-print { display: none !important; }
         }
     </style>
@@ -34,7 +35,7 @@
 
     <!-- Halaman Login -->
     <div id="loginPage" class="min-h-screen flex items-center justify-center p-6">
-        <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-sm text-center">
+        <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-sm:max-w-xs text-center">
             <h1 class="text-2xl font-black mb-8 tracking-tight uppercase">SELAMAT DATANG DI PORTAL ABSENSI SEKOLAH MINGGU</h1>
             <div class="space-y-4">
                 <input type="text" id="username" class="w-full px-6 py-4 rounded-2xl bg-gray-50 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Username" value="Admin">
@@ -71,12 +72,18 @@
             </div>
 
             <!-- Tombol Aksi -->
-            <div class="flex flex-col sm:flex-row gap-3">
-                <button onclick="startScan()" class="flex-1 btn-grad text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-3">
-                    <i data-lucide="scan-line" class="w-5 h-5"></i> Scan Barcode Kehadiran
-                </button>
-                <button onclick="openTeacherModal()" class="btn-rekap text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-3">
-                    <i data-lucide="file-text" class="w-5 h-5"></i> Download Rekap PDF
+            <div class="flex flex-col gap-3">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button onclick="startScan()" class="flex-1 btn-grad text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-3">
+                        <i data-lucide="scan-line" class="w-5 h-5"></i> Scan Barcode Kehadiran
+                    </button>
+                    <button onclick="openTeacherModal()" class="btn-rekap text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-3">
+                        <i data-lucide="file-text" class="w-5 h-5"></i> Download Rekap PDF
+                    </button>
+                </div>
+                <!-- Tombol Baru untuk Cetak Semua Kartu -->
+                <button onclick="downloadAllCardsPDF()" class="w-full btn-print-all text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-3 shadow-lg shadow-emerald-100">
+                    <i data-lucide="printer" class="w-5 h-5"></i> Cetak Semua Kartu Identitas (PDF)
                 </button>
             </div>
 
@@ -115,42 +122,53 @@
         </div>
     </div>
 
-    <!-- Modal ID Card -->
+    <!-- Modal ID Card (Bingkai Foto Lebih Panjang/Portrait) -->
     <div id="cardModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-        <div id="printArea" class="bg-white w-full max-w-[400px] rounded-[2.5rem] shadow-2xl overflow-hidden border">
+        <div id="printArea" class="bg-white w-full max-w-[420px] rounded-[3rem] shadow-2xl overflow-hidden border">
             <div class="bg-indigo-600 p-6 text-white flex justify-between items-center">
                 <span class="text-[9px] font-black uppercase tracking-widest">GPdI Immanuel Berastagi</span>
                 <span id="cardIdText" class="text-[9px] font-bold opacity-80">IMN-000</span>
             </div>
 
             <div class="p-8">
-                <div class="flex gap-6 items-start">
-                    <img id="cardPhoto" src="" class="w-24 h-24 rounded-2xl bg-indigo-50 border-2 border-indigo-100 object-cover">
-                    <div class="flex-1 space-y-3">
-                        <div>
-                            <p class="text-[8px] font-bold text-gray-400 uppercase">Nama Lengkap</p>
-                            <h2 id="cardName" class="font-black text-lg text-indigo-950">Nama Murid</h2>
+                <!-- Layout Header Kartu dengan Foto Lebih Panjang -->
+                <div class="flex flex-col gap-6 items-center text-center">
+                    <div class="relative">
+                        <img id="cardPhoto" src="" class="w-40 h-52 rounded-[2rem] bg-indigo-50 border-4 border-indigo-100 shadow-xl object-cover">
+                        <!-- Badge Usia -->
+                        <div class="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white px-5 py-1.5 rounded-full shadow-lg border border-indigo-100">
+                             <p id="cardAge" class="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">- Thn</p>
                         </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <p class="text-[8px] font-bold text-gray-400 uppercase">Usia</p>
-                                <p id="cardAge" class="text-xs font-bold text-gray-700">- Thn</p>
-                            </div>
-                            <div>
-                                <p class="text-[8px] font-bold text-gray-400 uppercase">Hadir</p>
-                                <p id="cardAttendance" class="text-xs font-bold text-indigo-600">0</p>
-                            </div>
+                    </div>
+                    
+                    <div class="space-y-1 mt-4">
+                        <p class="text-[8px] font-bold text-gray-400 uppercase tracking-[0.2em]">Nama Murid</p>
+                        <h2 id="cardName" class="font-black text-2xl text-indigo-950 leading-tight">Nama Murid</h2>
+                    </div>
+
+                    <div class="flex gap-8 justify-center w-full bg-gray-50 p-5 rounded-[2rem] border border-gray-100">
+                        <div>
+                            <p class="text-[8px] font-bold text-gray-400 uppercase">ID Murid</p>
+                            <p id="cardIdDisplay" class="text-xs font-black text-gray-700">IMN-XXX</p>
+                        </div>
+                        <div class="w-px h-8 bg-gray-200"></div>
+                        <div>
+                            <p class="text-[8px] font-bold text-gray-400 uppercase">Hadir</p>
+                            <p id="cardAttendance" class="text-xs font-black text-indigo-600">0 Kali</p>
                         </div>
                     </div>
                 </div>
-                <div class="mt-8 flex justify-center border-t border-dashed pt-6">
+
+                <!-- Bagian Barcode -->
+                <div class="mt-8 flex flex-col items-center border-t border-dashed border-gray-200 pt-6">
                     <svg id="barcodeCanvas"></svg>
+                    <p class="text-[7px] font-bold text-gray-400 mt-2 tracking-[0.3em] uppercase italic">Scan for Attendance</p>
                 </div>
             </div>
 
             <div class="p-6 bg-gray-50 flex gap-3 no-print">
-                <button onclick="window.print()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold text-[10px] uppercase">Cetak</button>
-                <button onclick="closeModal('cardModal')" class="flex-1 bg-white border text-gray-500 py-3 rounded-xl font-bold text-[10px] uppercase">Tutup</button>
+                <button onclick="window.print()" class="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-200">Cetak Kartu</button>
+                <button onclick="closeModal('cardModal')" class="flex-1 bg-white border text-gray-500 py-4 rounded-2xl font-black text-[10px] uppercase">Tutup</button>
             </div>
         </div>
     </div>
@@ -162,6 +180,9 @@
             <button onclick="closeModal('scanModal')" class="mt-8 text-white/50 text-[10px] font-bold uppercase underline">Batal</button>
         </div>
     </div>
+
+    <!-- Canvas Tersembunyi untuk Barcode Batch PDF -->
+    <canvas id="hiddenBarcode" class="hidden"></canvas>
 
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwQhCc_f1DJlSBYMNQzaetk5eUvNvCVDfWCn3BD69ypnm5tWFoWx2Ad5J0LLsIjxntsQ/exec";
@@ -191,7 +212,7 @@
             { id: "IMN-022", name: "Edgard Sharos Simbolon", age: 10, school: "4 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1g4uhJI41rTZtKpVhRrfc47yfxE0QfeGN/view?usp=sharing" },
             { id: "IMN-023", name: "MarzeloGeofrey", age: 12, school: "6 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1heYwpNOAntPe4wdk1EjN9lUM4VyyYgZF/view?usp=sharing" },
             { id: "IMN-024", name: "Adriel Tarigan", age: 10, school: "3 SD", class: "Cahaya", attendance: 0, photo: "https://drive.google.com/file/d/1bah1CLdpnIwvYIiQvAGqQu7jSQRKLd-1/view?usp=sharing" },
-             { id: "IMN-0001", name: "Yafet Andreas Brahmana", age:8, school: "2 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1O0lRiRvYMzp02s1Ofx-sv3XVGiH0yjQu/view?usp=sharing" },
+            { id: "IMN-0001", name: "Yafet Andreas Brahmana", age:8, school: "2 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1O0lRiRvYMzp02s1Ofx-sv3XVGiH0yjQu/view?usp=sharing" },
             { id: "IMN-0002", name: "Yesril Elvano Ginting", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1QNTh97TyDCuEupE16pq81zB7jDIU5o9a/view?usp=sharing" },
             { id: "IMN-0003", name: "Yoel Ginting", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1c_x_KaBGdkfV1PPZOb2oMwfea6hjS5rU/view?usp=sharing" },
             { id: "IMN-0004", name: "Giles Hagai Karo Karo", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1Ngf2JMe6cTxH8_x4R1L9bgnq4re9S4Tz/view?usp=sharing" },
@@ -210,20 +231,20 @@
             { id: "IMN-0017", name: "Aksel Natan Silalahi", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1LYIy91a_VMElFttMMnHwebYCUJUuZgcJ/view?usp=sharing" },
             { id: "IMN-0018", name: "Hesen Sitepu", age: 7, school: "1 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1kMHFQXZDqFKVu_79j0rtxwqZZKmqyOH2/view?usp=sharing" },
             { id: "IMN-0019", name: "Ilona Siahaan", age: 1, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1EOOtEPfksPQj3Sqpjhit7Hd1ULGleKJx/view?usp=sharing" },
-             { id: "IMN-0020", name: "Jediarga Ginting (Jeje)", age: 5, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1k3z-T_-sufROMLAjbLYbvGPj3kYdpAO5/view?usp=sharing" },
-             { id: "IMN-0021", name: "Alvito Lubis", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1iD4JdpVRdO6Pp40gwEfAoMacY5q7IEPg/view?usp=sharing" },
-             { id: "IMN-0022", name: "Dea Elnora Br purba", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1dqha2EwcSMVMF94vzNwoQsyxJoFLUgbd/view?usp=sharing" },
-             { id: "IMN-0023", name: "Jesifa Acira Fayona", age: 8, school: "1 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1bVU0zjQDayIJbNFyW88ADO5nY0kVKO7J/view?usp=sharing" },
-             { id: "IMN-0024", name: "Kavya Miracle Joe", age: 7, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1H8KKbTm8awGy3eBkhto-wHdotAiNIOa6/view?usp=sharing" },
-             { id: "IMN-0025", name: "Zivya Miracle Joe", age: 7, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1HJo8efC9_jIBWiAQ7T1ut_X8wAjlEd9T/view?usp=sharing" },
-             { id: "IMN-0025", name: "Clairine Misella Br Ginting", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1spOkYjpmXVbK-bkxhMiFTiblkwt4khXK/view?usp=sharing" },
-             { id: "IMN-0026", name: "Gloria Cantika Br Simanjorang", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1KoGONHl_9MmpnILAYzlmgRzqX-QE4MxG/view?usp=sharing" },
-             { id: "IMN-0027", name: "Diva Bintang", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1DzAz2R6RLXNoD441AxoiDoFCqMIoHlYd/view?usp=sharing" },
-             { id: "IMN-0028", name: "Mika Ulisinar Sihite", age: 10, school: "3 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1Srl8CNfQ6Z97_0GRFXkog1KOWArrs8ec/view?usp=sharing" },
-             { id: "IMN-0030", name: "Aurelia Br Tarigan", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1aDIIJesac_MsoZZqvcMpDC7aJi9MRy0A/view?usp=sharing" },
-             { id: "IMN-0031", name: "Joe Rapha Ginting", age: 1, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/13uDFYHuLzQxQdZGDC3EyZ0JZUW8rprIl/view?usp=sharing" },
-             { id: "IMN-0032", name: "Chasia Queensa Br Ginting", age: 6, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/19i7sj8V-qxNkyDUHIn6YshkOIGbDTANv/view?usp=sharing" },
-             { id: "IMN-0033", name: "Axel Kenneth Ginting", age: 3, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1lU5KDXuWwlbmpQI0Afn0hKV4oPZ0puVU/view?usp=sharing" }
+            { id: "IMN-0020", name: "Jediarga Ginting (Jeje)", age: 5, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1k3z-T_-sufROMLAjbLYbvGPj3kYdpAO5/view?usp=sharing" },
+            { id: "IMN-0021", name: "Alvito Lubis", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1iD4JdpVRdO6Pp40gwEfAoMacY5q7IEPg/view?usp=sharing" },
+            { id: "IMN-0022", name: "Dea Elnora Br purba", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1dqha2EwcSMVMF94vzNwoQsyxJoFLUgbd/view?usp=sharing" },
+            { id: "IMN-0023", name: "Jesifa Acira Fayona", age: 8, school: "1 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1bVU0zjQDayIJbNFyW88ADO5nY0kVKO7J/view?usp=sharing" },
+            { id: "IMN-0024", name: "Kavya Miracle Joe", age: 7, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1H8KKbTm8awGy3eBkhto-wHdotAiNIOa6/view?usp=sharing" },
+            { id: "IMN-0025", name: "Zivya Miracle Joe", age: 7, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1HJo8efC9_jIBWiAQ7T1ut_X8wAjlEd9T/view?usp=sharing" },
+            { id: "IMN-0026", name: "Clairine Misella Br Ginting", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1spOkYjpmXVbK-bkxhMiFTiblkwt4khXK/view?usp=sharing" },
+            { id: "IMN-0027", name: "Gloria Cantika Br Simanjorang", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1KoGONHl_9MmpnILAYzlmgRzqX-QE4MxG/view?usp=sharing" },
+            { id: "IMN-0028", name: "Diva Bintang", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1DzAz2R6RLXNoD441AxoiDoFCqMIoHlYd/view?usp=sharing" },
+            { id: "IMN-0029", name: "Mika Ulisinar Sihite", age: 10, school: "3 SD", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1Srl8CNfQ6Z97_0GRFXkog1KOWArrs8ec/view?usp=sharing" },
+            { id: "IMN-0030", name: "Aurelia Br Tarigan", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1aDIIJesac_MsoZZqvcMpDC7aJi9MRy0A/view?usp=sharing" },
+            { id: "IMN-0031", name: "Joe Rapha Ginting", age: 1, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/13uDFYHuLzQxQdZGDC3EyZ0JZUW8rprIl/view?usp=sharing" },
+            { id: "IMN-0032", name: "Chasia Queensa Br Ginting", age: 6, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/19i7sj8V-qxNkyDUHIn6YshkOIGbDTANv/view?usp=sharing" },
+            { id: "IMN-0033", name: "Axel Kenneth Ginting", age: 3, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "https://drive.google.com/file/d/1lU5KDXuWwlbmpQI0Afn0hKV4oPZ0puVU/view?usp=sharing" }
         ];
 
         let html5QrCode;
@@ -293,10 +314,104 @@
             document.getElementById('cardModal').classList.remove('hidden');
             document.getElementById('cardName').innerText = s.name;
             document.getElementById('cardIdText').innerText = s.id;
-            document.getElementById('cardAge').innerText = (s.age || '-') + " Tahun";
-            document.getElementById('cardAttendance').innerText = s.attendance + " Kali";
+            document.getElementById('cardIdDisplay').innerText = s.id;
+            document.getElementById('cardAge').innerText = (s.age || '-') + " TAHUN";
+            document.getElementById('cardAttendance').innerText = s.attendance + " KALI";
             document.getElementById('cardPhoto').src = getDirectDriveLink(s.photo, s.name);
             JsBarcode("#barcodeCanvas", s.id, { format: "CODE128", width: 2, height: 40, displayValue: false, lineColor: "#4f46e5" });
+        }
+
+        // Fungsi baru untuk Mencetak Semua Kartu ke dalam Satu PDF
+        async function downloadAllCardsPDF() {
+            showToast("MENYIAPKAN SEMUA KARTU...", "bg-indigo-600");
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4'); // Kertas A4 Portrait
+            
+            // Konfigurasi Layout (4 Kartu per halaman: 2x2)
+            const cardW = 90; // Lebar kartu dalam mm
+            const cardH = 135; // Tinggi kartu dalam mm (Portrait)
+            const margin = 10;
+            const gap = 10;
+
+            for (let i = 0; i < students.length; i++) {
+                const s = students[i];
+                const pageIndex = i % 4; // 0, 1, 2, 3 per halaman
+                
+                if (i > 0 && pageIndex === 0) doc.addPage();
+
+                // Hitung Posisi X dan Y
+                const col = pageIndex % 2;
+                const row = Math.floor(pageIndex / 2);
+                const x = margin + (col * (cardW + gap));
+                const y = margin + (row * (cardH + gap));
+
+                // Gambar Bingkai Kartu
+                doc.setDrawColor(200);
+                doc.setFillColor(255);
+                doc.roundedRect(x, y, cardW, cardH, 8, 8, 'FD');
+
+                // Header Biru
+                doc.setFillColor(79, 70, 229); // Indigo-600
+                doc.roundedRect(x, y, cardW, 15, 8, 8, 'F');
+                doc.rect(x, y + 10, cardW, 5, 'F'); // Menutup lengkungan bawah header agar lurus
+
+                doc.setTextColor(255);
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "bold");
+                doc.text("GPdI IMMANUEL BERASTAGI", x + 5, y + 9);
+                doc.setFontSize(7);
+                doc.text(s.id, x + cardW - 5, y + 9, { align: "right" });
+
+                // Placeholder Foto (Karena memproses image eksternal ke PDF di JS sulit secara sinkron tanpa CORS, kita buat bingkai saja)
+                doc.setDrawColor(79, 70, 229, 0.2);
+                doc.setFillColor(243, 244, 246);
+                doc.roundedRect(x + (cardW/2 - 20), y + 25, 40, 52, 5, 5, 'FD');
+                
+                doc.setTextColor(150);
+                doc.setFontSize(6);
+                doc.text("FOTO MURID", x + cardW/2, y + 51, { align: "center" });
+
+                // Nama Murid
+                doc.setTextColor(15, 23, 42);
+                doc.setFontSize(7);
+                doc.text("NAMA MURID", x + cardW/2, y + 85, { align: "center" });
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "bold");
+                
+                // Potong nama jika terlalu panjang
+                let displayName = s.name.toUpperCase();
+                if(displayName.length > 20) displayName = displayName.substring(0, 18) + "...";
+                doc.text(displayName, x + cardW/2, y + 92, { align: "center" });
+
+                // Info Box (Usia & Sekolah)
+                doc.setFillColor(249, 250, 251);
+                doc.roundedRect(x + 10, y + 100, cardW - 20, 12, 3, 3, 'F');
+                
+                doc.setTextColor(100);
+                doc.setFontSize(6);
+                doc.setFont("helvetica", "normal");
+                doc.text("USIA", x + 25, y + 105, { align: "center" });
+                doc.text("KELAS", x + cardW - 25, y + 105, { align: "center" });
+                
+                doc.setTextColor(15, 23, 42);
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "bold");
+                doc.text(`${s.age} THN`, x + 25, y + 109, { align: "center" });
+                doc.text(s.class.toUpperCase(), x + cardW - 25, y + 109, { align: "center" });
+
+                // Barcode Generation ke Base64
+                const canvas = document.getElementById('hiddenBarcode');
+                JsBarcode(canvas, s.id, { format: "CODE128", width: 2, height: 40, displayValue: false });
+                const barcodeImg = canvas.toDataURL("image/png");
+                doc.addImage(barcodeImg, 'PNG', x + (cardW/2 - 20), y + 115, 40, 10);
+                
+                doc.setTextColor(150);
+                doc.setFontSize(5);
+                doc.text("SCAN FOR ATTENDANCE", x + cardW/2, y + 128, { align: "center" });
+            }
+
+            doc.save(`Semua_Kartu_Identitas_${new Date().getTime()}.pdf`);
+            showToast("PDF KARTU BERHASIL DIUNDUH", "bg-emerald-600");
         }
 
         async function processAttendance(id) {
@@ -330,7 +445,6 @@
             ).catch(err => { showToast("KAMERA TIDAK AKTIF", "bg-red-500"); closeModal('scanModal'); });
         }
 
-        // Fungsi baru untuk membuka modal input nama guru
         function openTeacherModal() {
             document.getElementById('teacherModal').classList.remove('hidden');
             document.getElementById('teacherNameInput').value = "";
@@ -348,7 +462,6 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
-            // Header
             doc.setFontSize(18);
             doc.setFont("helvetica", "bold");
             doc.text("REKAP KEHADIRAN MURID", 105, 15, { align: "center" });
@@ -357,7 +470,6 @@
             doc.text("GPdI Immanuel Berastagi", 105, 22, { align: "center" });
             doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, 105, 28, { align: "center" });
 
-            // Data Tabel
             const sortedStudents = [...students].sort((a, b) => {
                 if (a.class < b.class) return -1;
                 if (a.class > b.class) return 1;
@@ -378,7 +490,6 @@
                 columnStyles: { 5: { fontStyle: 'bold', halign: 'center' } }
             });
 
-            // Footer Signature (Tanda Tangan Guru)
             const finalY = doc.lastAutoTable.finalY + 20;
             const currentDay = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
             
@@ -388,7 +499,7 @@
             
             doc.setFont("helvetica", "bold");
             doc.text(teacherName, 145, finalY + 30);
-            doc.line(145, finalY + 31, 190, finalY + 31); // Garis bawah nama
+            doc.line(145, finalY + 31, 190, finalY + 31);
 
             doc.save(`Rekap_Absensi_${new Date().getTime()}.pdf`);
             showToast("PDF BERHASIL DIUNDUH", "bg-indigo-600");
