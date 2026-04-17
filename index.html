@@ -44,7 +44,6 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Styling area kamera */
         #reader {
             width: 100%;
             border: none !important;
@@ -55,6 +54,15 @@
         #reader__scan_region video {
             border-radius: 1.5rem;
             object-fit: cover;
+        }
+        /* Custom styling for scan result success animation */
+        .scan-success {
+            animation: pulse-green 0.5s ease-in-out;
+        }
+        @keyframes pulse-green {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); background-color: #dcfce7; }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
@@ -102,7 +110,6 @@
         </nav>
 
         <main class="max-w-6xl mx-auto w-full p-6 space-y-6">
-            <!-- Statistik & Aksi Utama -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4">
                     <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
@@ -115,7 +122,7 @@
                 </div>
                 
                 <button onclick="openScanModal()" class="bg-emerald-500 text-white p-6 rounded-3xl shadow-lg flex items-center gap-4 hover:brightness-110 transition-all">
-                    <i data-lucide="camera" class="w-6 h-6"></i>
+                    <i data-lucide="qr-code" class="w-6 h-6"></i>
                     <div class="text-left">
                         <p class="text-[9px] font-bold opacity-80 uppercase tracking-widest">Scanner</p>
                         <p class="text-sm font-black uppercase">Scan Kartu</p>
@@ -139,7 +146,6 @@
                 </button>
             </div>
 
-            <!-- List Murid -->
             <div class="space-y-4">
                 <div class="flex flex-wrap gap-2" id="classTabs">
                     <button onclick="filterClass('Semua')" class="tab-btn active bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase">Semua</button>
@@ -148,27 +154,31 @@
                     <button onclick="filterClass('Pra Remaja')" class="tab-btn bg-white border border-slate-200 text-slate-400 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase">Pra Remaja</button>
                 </div>
 
-                <div id="studentGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+                <div id="studentGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
             </div>
         </main>
     </div>
 
     <!-- MODAL SCAN KAMERA -->
     <div id="scanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-6 backdrop-blur-md">
-        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 space-y-4">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center">
-                <h3 class="text-lg font-black uppercase">Scan Barcode KIA</h3>
-                <button onclick="closeModal('scanModal')" class="bg-slate-100 p-2 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <div>
+                    <h3 class="text-lg font-black uppercase">Scanner KIA</h3>
+                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Arahkan Barcode ke Kamera</p>
+                </div>
+                <button onclick="closeModal('scanModal')" class="bg-slate-100 p-2 rounded-full hover:bg-rose-100 hover:text-rose-500 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
             </div>
             
-            <!-- Elemen untuk Kamera -->
-            <div id="reader"></div>
+            <div id="reader" class="shadow-inner"></div>
             
             <div class="pt-2">
-                <p class="text-[10px] text-slate-400 text-center font-bold uppercase mb-2">Atau Input ID Manual</p>
+                <p class="text-[10px] text-slate-400 text-center font-bold uppercase mb-2">Input ID Manual</p>
                 <div class="flex gap-2">
-                    <input type="text" id="manualInput" class="flex-1 bg-slate-50 border-none rounded-xl px-4 py-3 font-black text-center text-sm outline-none focus:ring-2 focus:ring-emerald-500 uppercase" placeholder="IMN-XXX">
-                    <button onclick="processScan(document.getElementById('manualInput').value)" class="bg-emerald-500 text-white px-6 rounded-xl font-black text-[10px] uppercase shadow-lg">Proses</button>
+                    <input type="text" id="manualInput" class="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 font-black text-center text-sm outline-none focus:ring-2 focus:ring-emerald-500 uppercase" placeholder="CONTOH: IMN-001">
+                    <button onclick="processScan(document.getElementById('manualInput').value)" class="bg-emerald-500 text-white px-6 rounded-xl font-black text-[10px] uppercase shadow-lg hover:bg-emerald-600 transition-all">Input</button>
                 </div>
             </div>
         </div>
@@ -277,6 +287,7 @@
 
         let html5QrCode = null;
         let currentFilter = "Semua";
+        let isProcessing = false;
 
         function handleLogin(e) {
             e.preventDefault();
@@ -304,12 +315,20 @@
             filtered.forEach(s => {
                 const photoUrl = s.photo ? `https://lh3.googleusercontent.com/d/${s.photo}` : `https://api.dicebear.com/7.x/initials/png?seed=${s.name}`;
                 grid.innerHTML += `
-                    <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm text-center">
-                        <img src="${photoUrl}" class="w-16 h-16 rounded-2xl mx-auto mb-2 object-cover bg-slate-50">
-                        <h4 class="text-[10px] font-black uppercase truncate px-1">${s.name}</h4>
-                        <p class="text-[8px] text-slate-400 font-bold mt-1">${s.id}</p>
-                        <div class="mt-2 inline-flex items-center px-2 py-1 bg-indigo-50 text-indigo-600 rounded-lg">
-                            <span class="text-[9px] font-black uppercase">Hadir: ${s.attendance}</span>
+                    <div id="card-${s.id}" class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm text-center transition-all duration-300">
+                        <div class="relative inline-block">
+                             <img src="${photoUrl}" class="w-20 h-20 rounded-2xl mx-auto mb-2 object-cover bg-slate-50 border-2 border-indigo-50">
+                             <div class="absolute -top-1 -right-1 bg-indigo-600 text-white text-[8px] font-bold px-2 py-0.5 rounded-full">${s.age} Thn</div>
+                        </div>
+                        <h4 class="text-[10px] font-black uppercase truncate px-1 text-slate-800">${s.name}</h4>
+                        <div class="flex flex-col gap-0.5 mt-1">
+                             <p class="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">${s.id}</p>
+                             <p class="text-[8px] text-indigo-400 font-extrabold uppercase">${s.school}</p>
+                        </div>
+                        <div class="mt-3 flex items-center justify-center gap-2">
+                            <div class="px-3 py-1 bg-slate-50 text-slate-600 rounded-lg border border-slate-100">
+                                <span class="text-[9px] font-black uppercase">Hadir: ${s.attendance}</span>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -330,20 +349,25 @@
             renderDashboard();
         }
 
-        // LOGIKA SCAN KAMERA
         async function openScanModal() {
             document.getElementById('scanModal').classList.remove('hidden');
             html5QrCode = new Html5Qrcode("reader");
             
-            const qrConfig = { fps: 15, qrbox: { width: 250, height: 250 } };
+            // Konfigurasi agar mendeteksi Barcode (Code128) dan QR Code
+            const qrConfig = { 
+                fps: 20, 
+                qrbox: { width: 280, height: 180 },
+                aspectRatio: 1.0 
+            };
             
             try {
-                // Gunakan kamera belakang (environment)
                 await html5QrCode.start(
                     { facingMode: "environment" }, 
                     qrConfig, 
                     (decodedText) => {
-                        processScan(decodedText);
+                        if(!isProcessing) {
+                            processScan(decodedText);
+                        }
                     }
                 );
             } catch (err) {
@@ -362,33 +386,46 @@
         }
 
         function processScan(id) {
+            isProcessing = true;
             const cleanId = id.trim().toUpperCase();
             const idx = currentStudents.findIndex(s => s.id === cleanId);
 
             if (idx !== -1) {
-                // Tambahkan Kehadiran
-                currentStudents[idx].attendance += 1;
-                showToast(`BERHASIL: ${currentStudents[idx].name}`, "bg-emerald-500");
+                const student = currentStudents[idx];
+                student.attendance += 1;
                 
-                // Konfirmasi Suara (Opsional)
-                const msg = new SpeechSynthesisUtterance(`${currentStudents[idx].name} hadir`);
+                // Feedback Visual
+                showToast(`BERHASIL: ${student.name}`, "bg-emerald-500");
+                
+                // Suara
+                const msg = new SpeechSynthesisUtterance(`${student.name} berhasil diabsen`);
                 msg.lang = 'id-ID';
                 window.speechSynthesis.speak(msg);
 
                 renderDashboard();
+                
+                // Animasi highlight pada kartu yang baru discan
+                const card = document.getElementById(`card-${student.id}`);
+                if(card) {
+                    card.classList.add('scan-success', 'ring-4', 'ring-emerald-400');
+                    setTimeout(() => {
+                        card.classList.remove('scan-success', 'ring-4', 'ring-emerald-400');
+                    }, 2000);
+                }
+
                 document.getElementById('manualInput').value = "";
                 
-                // Beri jeda agar tidak terscan berulang kali dalam sedetik
-                if(html5QrCode) {
-                    html5QrCode.pause();
-                    setTimeout(() => html5QrCode.resume(), 2000);
-                }
+                // Jeda agar tidak scan berulang secara instan (2 detik cooldown)
+                setTimeout(() => {
+                    isProcessing = false;
+                }, 2500);
+
             } else {
                 showToast("ID TIDAK DIKENALI", "bg-rose-500");
+                setTimeout(() => { isProcessing = false; }, 2000);
             }
         }
 
-        // FUNGSI PENUNJANG PDF & LAINNYA
         async function getBase64ImageFromUrl(imageUrl) {
             try {
                 const response = await fetch(imageUrl);
@@ -418,43 +455,79 @@
                 const col = i % 2, row = Math.floor((i % 8) / 2);
                 const x = marginX + (col * (cardW + gap)), y = marginY + (row * (cardH + gap));
 
-                doc.setDrawColor(220); doc.setFillColor(255);
-                doc.roundedRect(x, y, cardW, cardH, 3, 3, 'FD');
+                // Desain Kartu
+                doc.setDrawColor(230); doc.setFillColor(255);
+                doc.roundedRect(x, y, cardW, cardH, 4, 4, 'FD');
+                
+                // Header Indigo
                 doc.setFillColor(79, 70, 229);
-                doc.roundedRect(x, y, cardW, 8, 3, 3, 'F');
-                doc.setTextColor(255); doc.setFontSize(7);
-                doc.text("KARTU IDENTITAS ANAK (KIA) - GPdI IMMANUEL", x + cardW/2, y + 5, { align: "center" });
+                doc.roundedRect(x, y, cardW, 10, 4, 4, 'F');
+                doc.rect(x, y+6, cardW, 4, 'F'); // Penutup sudut bawah header
+                
+                doc.setTextColor(255); doc.setFontSize(8); doc.setFont("helvetica", "bold");
+                doc.text("KARTU IDENTITAS ANAK - GPdI", x + cardW/2, y + 6.5, { align: "center" });
 
+                // Foto Murid
                 const photoUrl = s.photo ? `https://lh3.googleusercontent.com/d/${s.photo}` : null;
+                doc.setDrawColor(240); doc.setFillColor(245);
+                doc.roundedRect(x + 5, y + 14, 20, 25, 2, 2, 'FD');
+                
                 if(photoUrl) {
                     const img = await getBase64ImageFromUrl(photoUrl);
-                    if(img) doc.addImage(img, 'JPEG', x + 5, y + 12, 18, 22);
+                    if(img) doc.addImage(img, 'JPEG', x + 6, y + 15, 18, 23);
                 }
 
-                doc.setTextColor(30); doc.setFontSize(8);
-                doc.text(s.name.toUpperCase(), x + 27, y + 15);
-                doc.setFontSize(6); doc.setTextColor(100);
-                doc.text(`ID ABSENSI  : ${s.id}`, x + 27, y + 20);
-                doc.text(`KELAS SM    : ${s.class}`, x + 27, y + 24);
-                doc.text(`KEHADIRAN   : ${s.attendance}`, x + 27, y + 28);
+                // Data Murid
+                doc.setTextColor(40); doc.setFontSize(9); doc.setFont("helvetica", "bold");
+                doc.text(s.name.toUpperCase(), x + 28, y + 18);
+                
+                doc.setFontSize(7); doc.setTextColor(100); doc.setFont("helvetica", "normal");
+                doc.text(`ID ABSENSI`, x + 28, y + 23);
+                doc.setTextColor(60); doc.text(`: ${s.id}`, x + 45, y + 23);
+                
+                doc.setTextColor(100); doc.text(`USIA`, x + 28, y + 27);
+                doc.setTextColor(60); doc.text(`: ${s.age} Tahun`, x + 45, y + 27);
+                
+                doc.setTextColor(100); doc.text(`PENDIDIKAN`, x + 28, y + 31);
+                doc.setTextColor(60); doc.text(`: ${s.school}`, x + 45, y + 31);
+                
+                doc.setTextColor(100); doc.text(`KELAS SM`, x + 28, y + 35);
+                doc.setTextColor(60); doc.text(`: ${s.class}`, x + 45, y + 35);
 
+                // Barcode di bawah kanan
                 const canvas = document.getElementById('hiddenBarcode');
-                JsBarcode(canvas, s.id, { format: "CODE128", displayValue: true, fontSize: 18 });
-                doc.addImage(canvas.toDataURL(), 'PNG', x + cardW - 35, y + 38, 30, 12);
+                JsBarcode(canvas, s.id, { 
+                    format: "CODE128", 
+                    displayValue: false, 
+                    margin: 0,
+                    lineColor: "#1e293b"
+                });
+                doc.addImage(canvas.toDataURL(), 'PNG', x + cardW - 35, y + cardH - 12, 30, 8);
+                doc.setFontSize(6); doc.text(s.id, x + cardW - 20, y + cardH - 3.5, { align: "center" });
             }
-            doc.save(`KIA_GPdI_${Date.now()}.pdf`);
+            doc.save(`KIA_GPdI_READY_${Date.now()}.pdf`);
             document.getElementById('loadingOverlay').style.display = 'none';
         }
 
         function handleGenerateReport() {
             const filter = document.getElementById('printClassCategory').value;
+            const teacher = document.getElementById('teacherName').value || "..................";
             const filtered = filter === "Semua" ? currentStudents : currentStudents.filter(s => s.class === filter);
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            doc.text(`LAPORAN KEHADIRAN - ${filter}`, 14, 20);
-            const body = filtered.map(s => [s.id, s.name, s.class, s.attendance]);
-            doc.autoTable({ startY: 25, head: [['ID', 'NAMA', 'KELAS', 'HADIR']], body: body });
-            doc.save(`LAPORAN_${filter}.pdf`);
+            
+            doc.setFontSize(16); doc.text(`DAFTAR HADIR SEKOLAH MINGGU`, 105, 15, { align: "center" });
+            doc.setFontSize(10); doc.text(`Kategori: ${filter} | Guru: ${teacher} | Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 105, 22, { align: "center" });
+            
+            const body = filtered.map(s => [s.id, s.name, s.age, s.school, s.class, s.attendance]);
+            doc.autoTable({ 
+                startY: 30, 
+                head: [['ID', 'NAMA MURID', 'USIA', 'SEKOLAH', 'KELAS', 'HADIR']], 
+                body: body,
+                theme: 'grid',
+                headStyles: { fillColor: [79, 70, 229] }
+            });
+            doc.save(`LAPORAN_HADIR_${filter}.pdf`);
         }
 
         function openPrintModal() { document.getElementById('printModal').classList.remove('hidden'); }
