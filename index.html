@@ -1,522 +1,546 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Absensi GPdI Immanuel - Manual Input Edition</title>
-    <!-- Framework & Library -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Church, 
+  Users, 
+  LogOut, 
+  Plus, 
+  Search, 
+  Printer, 
+  CreditCard, 
+  CheckCircle2, 
+  X, 
+  Keyboard,
+  UserCheck,
+  TrendingUp,
+  Award
+} from 'lucide-react';
+
+const INITIAL_STUDENTS = [
+    { id: "IMN-001", name: "Eldo Desenta Purba", age: 9, school: "3 SD", class: "Cahaya", photo: "1N2mWe7lwcrPFlGD9AKr5ywJQrlImpKSf" },
+    { id: "IMN-002", name: "Fahlepta Surbakti", age: 9, school: "3 SD", class: "Cahaya", photo: "1tioPYfFwvohFegtc5Qdwu2loEWYmL9zw" },
+    { id: "IMN-003", name: "Lexi Felicia", age: 12, school: "6 SD", class: "Cahaya", photo: "1-MOF_UXawWKy8Wn7rV5Xpqxb6GtcNjlC" },
+    { id: "IMN-004", name: "Velizio Sitepu", age: 8, school: "3 SD", class: "Cahaya", photo: "1ZsW8SYwtE_58RV4mceMhnSn60yNAN1Fs" },
+    { id: "IMN-005", name: "Sergius Silalahi", age: 10, school: "4 SD", class: "Cahaya", photo: "1r7VgfPc3RUPpRc7_44FjXGKQadwQ7I_Q" },
+    { id: "IMN-006", name: "Gabriel Ginting", age: 11, school: "4 SD", class: "Cahaya", photo: "1LfqXQ_EvLpHmAyMgriv4Qxi0-rMFpaPz" },
+    { id: "IMN-007", name: "Ria Silalahi", age: 12, school: "5 SD", class: "Cahaya", photo: "1tIyAEk0rvZtkSEJnjbbcGjdY2W94VAXz" },
+    { id: "IMN-008", name: "Elsa Purba", age: 11, school: "5 SD", class: "Cahaya", photo: "12SgyOcrop0d-h6ny6_BfyNg4EkSSPcmp" },
+    { id: "IMN-009", name: "Enola", age: 11, school: "5 SD", class: "Cahaya", photo: "1HrKwbW-h_Mc51aLVp48CShSaMJOAcQxy" },
+    { id: "IMN-010", name: "Adelia Sibarani", age: 11, school: "5 SD", class: "Cahaya", photo: "1yoxiZ5MvxgvwQePZ4geZEqAlO2ycr7Ks" },
+    { id: "IMN-011", name: "Aurel Barus", age: 11, school: "5 SD", class: "Cahaya", photo: "1y9REKuYi4T_ogTTuMvrnF8AibEyoUdjV" },
+    { id: "IMN-012", name: "Charlotte Sitanggang", age: 11, school: "6 SD", class: "Cahaya", photo: "1cj8D-ArkF3O8m6MBGLD5XaM6VvV-Bhvr" },
+    { id: "IMN-013", name: "Vanesa Br Ginting", age: 12, school: "6 SD", class: "Cahaya", photo: "1tr4uyD8EXFm2b0j0eN-DbjYMEoRIsBqn" },
+    { id: "IMN-014", name: "Evelin Br Ginting", age: 9, school: "3 SD", class: "Cahaya", photo: "1yteDD45DOPZTPkyy3QfwABGhg3mbNU3Y" },
+    { id: "IMN-015", name: "Alvina Gabriella", age: 9, school: "3 SD", class: "Cahaya", photo: "1j7hM7K1uZCczTq2MzlJaFAho9GEQQixf" },
+    { id: "IMN-016", name: "Kirel Adrelia Sibero", age: 9, school: "3 SD", class: "Cahaya", photo: "15oXwGpvr8guegVLcmSYfusC-CT2zGJSO" },
+    { id: "IMN-017", name: "Ema Br Sinaga", age: 10, school: "4 SD", class: "Cahaya", photo: "1yw3pwpdYFoSZJMwMcsE2PAeLvyQJivxl" },
+    { id: "IMN-018", name: "Okto Zendate", age: 12, school: "6 SD", class: "Cahaya", photo: "1Yfnc19co2Izig3ayvJOqo7_fOretCEHh" },
+    { id: "IMN-019", name: "Adel Esterina Br Sinuraya", age: 11, school: "6 SD", class: "Cahaya", photo: "1TRR4yrDrUb7M3JPVDv6-u0CiYLLWr5Kc" },
+    { id: "IMN-020", name: "Cristina Oktaviani Br Tarigan", age: 11, school: "5 SD", class: "Cahaya", photo: "1h1AG74c_6_OpGR1q7dgXsKFDUD2HLdct" },
+    { id: "IMN-021", name: "Keren Eklesia Br Ginting", age: 11, school: "5 SD", class: "Cahaya", photo: "1Gg4ImFYYqJxXsBK9YddWSZ8vwcXNxrqF" },
+    { id: "IMN-022", name: "Edgard Sharos Simbolon", age: 10, school: "4 SD", class: "Cahaya", photo: "1g4uhJI41rTZtKpVhRrfc47yfxE0QfeGN" },
+    { id: "IMN-023", name: "Marzelo Geofrey", age: 12, school: "6 SD", class: "Cahaya", photo: "1heYwpNOAntPe4wdk1EjN9lUM4VyyYgZF" },
+    { id: "IMN-024", name: "Adriel Tarigan", age: 10, school: "3 SD", class: "Cahaya", photo: "1bah1CLdpnIwvYIiQvAGqQu7jSQRKLd-1" },
     
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background: #f8fafc; 
-        }
-        .hidden { display: none; }
-        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
+    // KELAS BINTANG
+    { id: "IMN-0001", name: "Yafet Andreas Brahmana", age: 8, school: "2 SD", class: "Bintang", photo: "1O0lRiRvYMzp02s1Ofx-sv3XVGiH0yjQu" },
+    { id: "IMN-0002", name: "Yesril Elvano Ginting", age: 8, school: "2 SD", class: "Bintang", photo: "1QNTh97TyDCuEupE16pq81zB7jDIU5o9a" },
+    { id: "IMN-0003", name: "Yoel Ginting", age: 8, school: "2 SD", class: "Bintang", photo: "1c_x_KaBGdkfV1PPZOb2oMwfea6hjS5rU" },
+    { id: "IMN-0004", name: "Giles Hagai Karo Karo", age: 8, school: "2 SD", class: "Bintang", photo: "1Ngf2JMe6cTxH8_x4R1L9bgnq4re9S4Tz" },
+    { id: "IMN-0005", name: "Fahlef Surbakti", age: 9, school: "3 SD", class: "Bintang", photo: "1dRNH9h-EimzAxgOxy6fni89lEEM1IAng" },
+    { id: "IMN-0007", name: "Maria Sibarani", age: 8, school: "1 SD", class: "Bintang", photo: "1ExMpD2v7g4KA5zyHIjxFxlF_NZKct-Xn" },
+    { id: "IMN-0008", name: "Helda Sibarani", age: 6, school: "TK", class: "Bintang", photo: "1OjISM805fKoktAIfg5EYXbv3WiaFlvys" },
+    { id: "IMN-0009", name: "Velika Adriella Br Sitepu", age: 4, school: "Belum Sekolah", class: "Bintang", photo: "1hvNyCl_3WOncaMa_vVqXuEB_gPJd7hoD" },
+    { id: "IMN-0010", name: "Gareth Dnoel Sombolon", age: 7, school: "1 SD", class: "Bintang", photo: "1mHqulG0C69i1MXOU5xbHxD982eb5Ve0b" },
+    { id: "IMN-0011", name: "Rafa Sinaga", age: 8, school: "1 SD", class: "Bintang", photo: "1LWN7B88q4hrU0rZsw9-zOGCkZLCWlnew" },
+    { id: "IMN-0012", name: "Tesalonika Sinaga", age: 3, school: "Belum Sekolah", class: "Bintang", photo: "1wcnpFl8nwOqJDTvxdzT9f75TmrMZa0AO" },
+    { id: "IMN-0013", name: "Desen Purba", age: 9, school: "3 SD", class: "Bintang", photo: "1pBzraJnZyu-CPWkdQJmD7RE73tJG0HJv" },
+    { id: "IMN-0014", name: "Elyora Purba", age: 4, school: "Belum Sekolah", class: "Bintang", photo: "1hFdZcmRjxYWAx7s8DS_Q_9-P1OmEu66W" },
+    { id: "IMN-0015", name: "Elzira Br Ginting", age: 8, school: "2 SD", class: "Bintang", photo: "1uYTBx7L6T3XKpLn4p_YKWhhsT-uBUe_7" },
+    { id: "IMN-0016", name: "Jesen Sitepu", age: 2, school: "Belum Sekolah", class: "Bintang", photo: "16egK2BXQt7pnQLGnbdv_ionLcV2WlAHA" },
+    { id: "IMN-0017", name: "Aksel Natan Silalahi", age: 6, school: "TK", class: "Bintang", photo: "1LYIy91a_VMElFttMMnHwebYCUJUuZgcJ" },
+    { id: "IMN-0018", name: "Hesen Sitepu", age: 7, school: "1 SD", class: "Bintang", photo: "1kMHFQXZDqFKVu_79j0rtxwqZZKmqyOH2" },
+    { id: "IMN-0019", name: "Ilona Siahaan", age: 1, school: "Belum Sekolah", class: "Bintang", photo: "1EOOtEPfksPQj3Sqpjhit7Hd1ULGleKJx" },
+    { id: "IMN-0020", name: "Jediarga Ginting (Jeje)", age: 5, school: "Belum Sekolah", class: "Bintang", photo: "1k3z-T_-sufROMLAjbLYbvGPj3kYdpAO5" },
+    { id: "IMN-0021", name: "Alvito Lubis", age: 6, school: "TK", class: "Bintang", photo: "1iD4JdpVRdO6Pp40gwEfAoMacY5q7IEPg" },
+    { id: "IMN-0022", name: "Dea Elnora Br purba", age: 8, school: "2 SD", class: "Bintang", photo: "1dqha2EwcSMVMF94vzNwoQsyxJoFLUgbd" },
+    { id: "IMN-0023", name: "Jesifa Acira Fayona", age: 8, school: "1 SD", class: "Bintang", photo: "1bVU0zjQDayIJbNFyW88ADO5nY0kVKO7J" },
+    { id: "IMN-0024", name: "Kavya Miracle Joe", age: 7, school: "TK", class: "Bintang", photo: "1H8KKbTm8awGy3eBkhto-wHdotAiNIOa6" },
+    { id: "IMN-0025", name: "Zivya Miracle Joe", age: 7, school: "TK", class: "Bintang", photo: "1HJo8efC9_jIBWiAQ7T1ut_X8wAjlEd9T" },
+    { id: "IMN-0026", name: "Clairine Misella Br Ginting", age: 6, school: "TK", class: "Bintang", photo: "1spOkYjpmXVbK-bkxhMiFTiblkwt4khXK" },
+    { id: "IMN-0027", name: "Gloria Cantika Br Simanjorang", age: 6, school: "TK", class: "Bintang", photo: "1KoGONHl_9MmpnILAYzlmgRzqX-QE4MxG" },
+    { id: "IMN-0028", name: "Diva Bintang", age: 6, school: "TK", class: "Bintang", photo: "1DzAz2R6RLXNoD441AxoiDoFCqMIoHlYd" },
+    { id: "IMN-0029", name: "Mika Ulisinar Sihite", age: 10, school: "3 SD", class: "Bintang", photo: "1Srl8CNfQ6Z97_0GRFXkog1KOWArrs8ec" },
+    { id: "IMN-0030", name: "Aurelia Br Tarigan", age: 6, school: "TK", class: "Bintang", photo: "1aDIIJesac_MsoZZqvcMpDC7aJi9MRy0A" },
+    { id: "IMN-0031", name: "Joe Rapha Ginting", age: 1, school: "Belum Sekolah", class: "Bintang", photo: "13uDFYHuLzQxQdZGDC3EyZ0JZUW8rprIl" },
+    { id: "IMN-0032", name: "Chasia Queensa Br Ginting", age: 6, school: "Belum Sekolah", class: "Bintang", photo: "19i7sj8V-qxNkyDUHIn6YshkOIGbDTANv" },
+    { id: "IMN-0033", name: "Axel Kenneth Ginting", age: 3, school: "Belum Sekolah", class: "Bintang", photo: "1lU5KDXuWwlbmpQI0Afn0hKV4oPZ0puVU" },
+    { id: "IMN-0034", name: "Revanya Abigail Br Surbakti", age: 9, school: "2", class: "Bintang", photo: "1n1LujZ-u0FMyNbMtCOb_IoiFyUfTuRhP" },
+    { id: "IMN-0035", name: "Thiago Ginting", age: 5, school: "Belum Sekolah", class: "Bintang", photo: "1ZTmACpCjcpTJAhFSFN92jxlCVbh3aILb" },
+
+    // KELAS PRA REMAJA
+    { id: "IMN-0040", name: "Cristiano de Caprio", age: 13, school: "-", class: "Pra Remaja", photo: "1xT3SRcLx6IWYH3M9yLIArZ8w0BxGfQZj" },
+    { id: "IMN-0041", name: "Risky Tuahta Bangun", age: 15, school: "-", class: "Pra Remaja", photo: "1f-Dz_4kpezqsti7zUoXXN4pQkpJyAMwX" },
+    { id: "IMN-0042", name: "Yonatan Ceristian Sitepu", age: 13, school: "-", class: "Pra Remaja", photo: "1AQ0PzisxdHRWNcnyGWulvw6Rs-9-A1o_" },
+    { id: "IMN-0043", name: "Calvien Aldiano Sagala", age: 12, school: "-", class: "Pra Remaja", photo: "1seA2C_QMVJHo2q7OyBW5B_L5rSbuKhWA" },
+    { id: "IMN-0044", name: "Mario Ramah Suka Purba", age: 15, school: "-", class: "Pra Remaja", photo: "1cV_2dMJ-rcbDOjM1hPvca1lob9Gsujpx" },
+    { id: "IMN-0045", name: "Rafael", age: 14, school: "-", class: "Pra Remaja", photo: "1SmKxhk89MmP3upIWUCtzMjZnUkdSaBb6" },
+    { id: "IMN-0046", name: "Griselda Fidelis Br Tarigan", age: 13, school: "-", class: "Pra Remaja", photo: "1BiJssjOLtj5Zm18aZebNxrSN7VlgX0we" },
+    { id: "IMN-0047", name: "Mila Febriani Br Silalahi", age: 14, school: "-", class: "Pra Remaja", photo: "1pvhSfp0RGaXsV1Kcft9MxbmimXpIJvpu" },
+    { id: "IMN-0048", name: "Nadine Izura Kinata Kembaren", age: 14, school: "-", class: "Pra Remaja", photo: "1srtWCBLmZOcnyE9JLtWNIO_W0v3SeDCv" },
+    { id: "IMN-0049", name: "Nasya Ekklesia Mendrofa", age: 13, school: "-", class: "Pra Remaja", photo: "1GpdgLtUwulwQDZ6Epez4bcCzdM8MY8y3" },
+    { id: "IMN-0050", name: "Nachelle Olivia Sitanggang", age: 13, school: "-", class: "Pra Remaja", photo: "191NnQ1UP1VYbTA8R_LwXFLTQEvbNAtuQ" },
+    { id: "IMN-0051", name: "Heppi Muliahati Silalahi", age: 13, school: "-", class: "Pra Remaja", photo: "1ireVA5g0lNE6t4lhUPW-oGwlnWeYQcW2" }
+];
+
+export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [credentials, setCredentials] = useState({ username: '', password: '' });
+  const [students, setStudents] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState({});
+  const [activeTab, setActiveTab] = useState('Semua');
+  const [modalType, setModalType] = useState(null); // 'absensi', 'report', 'kia'
+  const [toast, setToast] = useState(null);
+  const [manualInput, setManualInput] = useState('');
+  const [teacherName, setTeacherName] = useState('');
+
+  useEffect(() => {
+    const savedAttendance = localStorage.getItem('immanuel_attendance');
+    if (savedAttendance) {
+      setAttendanceRecords(JSON.parse(savedAttendance));
+    }
+    setStudents(INITIAL_STUDENTS);
+
+    // Load External Scripts for PDF and Barcode
+    const scripts = [
+      'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js',
+      'https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js'
+    ];
+    
+    scripts.forEach(src => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      document.body.appendChild(script);
+    });
+  }, []);
+
+  const saveAttendance = (newRecords) => {
+    setAttendanceRecords(newRecords);
+    localStorage.setItem('immanuel_attendance', JSON.stringify(newRecords));
+  };
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (credentials.username === "SM2026" && credentials.password === "Imn2026") {
+      setIsLoggedIn(true);
+      showToast("Selamat Datang di Portal Absensi!", "bg-indigo-600");
+    } else {
+      showToast("Username atau Password Salah", "bg-rose-500");
+    }
+  };
+
+  const showToast = (message, color) => {
+    setToast({ message, color });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleManualAbsensi = () => {
+    const query = manualInput.trim().toUpperCase();
+    if (!query) return;
+
+    const student = students.find(s => 
+      s.id.toUpperCase() === query || 
+      s.name.toUpperCase() === query
+    );
+
+    if (student) {
+      const today = new Date().toISOString().split('T')[0];
+      const newRecords = { ...attendanceRecords };
+      
+      if (!newRecords[student.id]) newRecords[student.id] = [];
+      
+      if (newRecords[student.id].includes(today)) {
+        showToast(`${student.name} sudah absen hari ini`, "bg-amber-500");
+      } else {
+        newRecords[student.id].push(today);
+        saveAttendance(newRecords);
+        showToast(`Berhasil mencatat kehadiran ${student.name}`, "bg-emerald-500");
         
-        #loadingOverlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(4px);
-            z-index: 9999;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: white;
+        // Voice Feedback
+        if ('speechSynthesis' in window) {
+          const msg = new SpeechSynthesisUtterance(`Halo ${student.name}, selamat datang di sekolah minggu.`);
+          msg.lang = 'id-ID';
+          window.speechSynthesis.speak(msg);
         }
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(255,255,255,0.1);
-            border-left-color: #6366f1;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
+      }
+      setManualInput('');
+      setModalType(null);
+    } else {
+      showToast("Data Murid tidak ditemukan", "bg-rose-500");
+    }
+  };
 
-        .scan-success {
-            animation: pulse-green 0.5s ease-in-out;
-        }
-        @keyframes pulse-green {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); background-color: #dcfce7; }
-            100% { transform: scale(1); }
-        }
-    </style>
-</head>
-<body class="antialiased text-slate-900">
+  const generateReport = () => {
+    if (!window.jspdf) return showToast("Sistem sedang memuat library, coba lagi...", "bg-amber-500");
+    
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const today = new Date().toISOString().split('T')[0];
+    const filtered = activeTab === 'Semua' ? students : students.filter(s => s.class === activeTab);
 
-    <div id="loadingOverlay">
-        <div class="spinner mb-4"></div>
-        <p id="loadingText" class="font-black text-[10px] uppercase tracking-[0.2em]">Memproses Data...</p>
-    </div>
+    doc.setFontSize(16);
+    doc.text("LAPORAN KEHADIRAN SEKOLAH MINGGU", 105, 20, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text(`GPdI Immanuel Berastagi | Kelas: ${activeTab}`, 105, 28, { align: 'center' });
+    doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, 105, 34, { align: 'center' });
 
-    <!-- Notifikasi Toast -->
-    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full text-white font-bold z-[100] shadow-2xl text-[10px] uppercase tracking-widest opacity-0 transition-all duration-300 pointer-events-none"></div>
+    const tableBody = filtered.map((s, i) => [
+      i + 1,
+      s.id,
+      s.name,
+      s.class,
+      (attendanceRecords[s.id] || []).includes(today) ? 'HADIR' : 'ABSEN'
+    ]);
 
-    <!-- 1. HALAMAN LOGIN -->
-    <div id="loginPage" class="min-h-screen flex items-center justify-center p-6">
-        <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-10 border border-slate-100">
-            <div class="text-center mb-10">
-                <div class="w-16 h-16 bg-indigo-600 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-                    <i data-lucide="church" class="w-8 h-8"></i>
-                </div>
-                <h1 class="text-2xl font-black text-slate-900 uppercase">Portal Absensi</h1>
-                <p class="text-slate-400 font-bold text-[10px] uppercase mt-2">GPdI Immanuel Berastagi</p>
+    doc.autoTable({
+      startY: 45,
+      head: [['NO', 'ID', 'NAMA MURID', 'KELAS', 'STATUS']],
+      body: tableBody,
+      headStyles: { fillColor: [79, 70, 229] },
+      theme: 'grid'
+    });
+
+    const finalY = doc.lastAutoTable.finalY + 20;
+    doc.text("Mengetahui,", 150, finalY);
+    doc.text(teacherName || "Guru Pembimbing", 150, finalY + 25);
+
+    doc.save(`Laporan_${activeTab}_${today}.pdf`);
+    setModalType(null);
+  };
+
+  const filteredStudents = useMemo(() => {
+    return activeTab === 'Semua' ? students : students.filter(s => s.class === activeTab);
+  }, [activeTab, students]);
+
+  const stats = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const totalHadirToday = students.filter(s => (attendanceRecords[s.id] || []).includes(today)).length;
+    return {
+      total: students.length,
+      hadir: totalHadirToday,
+      percentage: Math.round((totalHadirToday / (students.length || 1)) * 100)
+    };
+  }, [students, attendanceRecords]);
+
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-10 border border-slate-100">
+          <div className="text-center mb-10">
+            <div className="w-20 h-20 bg-indigo-600 rounded-3xl mx-auto mb-6 flex items-center justify-center text-white shadow-xl shadow-indigo-100">
+              <Church size={40} />
             </div>
-            
-            <form onsubmit="handleLogin(event)" class="space-y-4">
-                <input type="text" id="username" required class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Username">
-                <input type="password" id="password" required class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Password">
-                <button type="submit" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-indigo-700 transition-all uppercase text-[10px] tracking-widest">Masuk</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- 2. HALAMAN DASHBOARD -->
-    <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
-        <nav class="glass sticky top-0 z-40 p-5 flex justify-between items-center border-b border-slate-200">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
-                    <i data-lucide="users" class="w-4 h-4"></i>
-                </div>
-                <span class="font-extrabold text-[10px] uppercase tracking-wider">Dashboard Portal</span>
-            </div>
-            <button onclick="logout()" class="text-rose-500 p-2 rounded-xl hover:bg-rose-50 transition-colors">
-                <i data-lucide="log-out" class="w-5 h-5"></i>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Portal Absensi</h1>
+            <p className="text-slate-400 font-bold text-xs uppercase mt-3 tracking-widest">GPdI Immanuel Berastagi</p>
+          </div>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input 
+              type="text" 
+              placeholder="Username"
+              className="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-6 py-4 outline-none transition-all font-semibold"
+              onChange={(e) => setCredentials({...credentials, username: e.target.value})}
+            />
+            <input 
+              type="password" 
+              placeholder="Password"
+              className="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-6 py-4 outline-none transition-all font-semibold"
+              onChange={(e) => setCredentials({...credentials, password: e.target.value})}
+            />
+            <button className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-lg hover:bg-indigo-700 hover:-translate-y-1 transition-all uppercase text-xs tracking-widest">
+              Masuk Sekarang
             </button>
-        </nav>
-
-        <main class="max-w-6xl mx-auto w-full p-6 space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4">
-                    <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
-                        <i data-lucide="user-plus" class="w-5 h-5"></i>
-                    </div>
-                    <div>
-                        <p class="text-[9px] font-bold text-slate-400 uppercase">Total Murid</p>
-                        <p id="statTotal" class="text-xl font-black">0</p>
-                    </div>
-                </div>
-                
-                <button onclick="openAbsensiModal()" class="bg-emerald-500 text-white p-6 rounded-3xl shadow-lg flex items-center gap-4 hover:brightness-110 transition-all">
-                    <i data-lucide="keyboard" class="w-6 h-6"></i>
-                    <div class="text-left">
-                        <p class="text-[9px] font-bold opacity-80 uppercase tracking-widest">Pencatatan</p>
-                        <p class="text-sm font-black uppercase">Input Absensi</p>
-                    </div>
-                </button>
-
-                <button onclick="openPrintModal()" class="bg-slate-900 text-white p-6 rounded-3xl shadow-lg flex items-center gap-4 hover:brightness-110 transition-all">
-                    <i data-lucide="printer" class="w-6 h-6"></i>
-                    <div class="text-left">
-                        <p class="text-[9px] font-bold opacity-50 uppercase tracking-widest">Laporan</p>
-                        <p class="text-sm font-black uppercase">Daftar Hadir</p>
-                    </div>
-                </button>
-
-                <button onclick="openKIAModal()" class="bg-indigo-600 text-white p-6 rounded-3xl shadow-lg flex items-center gap-4 hover:brightness-110 transition-all">
-                    <i data-lucide="credit-card" class="w-6 h-6"></i>
-                    <div class="text-left">
-                        <p class="text-[9px] font-bold opacity-50 uppercase tracking-widest">Cetak</p>
-                        <p class="text-sm font-black uppercase">Kartu KIA</p>
-                    </div>
-                </button>
-            </div>
-
-            <div class="space-y-4">
-                <div class="flex flex-wrap gap-2" id="classTabs">
-                    <button onclick="filterClass('Semua')" class="tab-btn active bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase">Semua</button>
-                    <button onclick="filterClass('Cahaya')" class="tab-btn bg-white border border-slate-200 text-slate-400 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase">Cahaya</button>
-                    <button onclick="filterClass('Bintang')" class="tab-btn bg-white border border-slate-200 text-slate-400 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase">Bintang</button>
-                    <button onclick="filterClass('Pra Remaja')" class="tab-btn bg-white border border-slate-200 text-slate-400 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase">Pra Remaja</button>
-                </div>
-
-                <div id="studentGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
-            </div>
-        </main>
-    </div>
-
-    <!-- MODAL INPUT ABSENSI MANUAL -->
-    <div id="absensiModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-6 backdrop-blur-md">
-        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 space-y-6 shadow-2xl">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h3 class="text-lg font-black uppercase">Input Absensi</h3>
-                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Masukkan ID Murid Secara Manual</p>
-                </div>
-                <button onclick="closeModal('absensiModal')" class="bg-slate-100 p-2 rounded-full hover:bg-rose-100 hover:text-rose-500 transition-colors">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="text-[9px] font-black uppercase text-slate-400 mb-2 block">ID Murid / Nama</label>
-                    <input type="text" id="manualInput" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 font-black text-center text-lg outline-none focus:border-emerald-500 transition-all uppercase" placeholder="CONTOH: IMN-001" onkeyup="if(event.key === 'Enter') handleManualSubmit()">
-                </div>
-                
-                <div class="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
-                    <p class="text-[8px] font-bold text-indigo-600 uppercase mb-1">Tips:</p>
-                    <p class="text-[9px] text-indigo-400 leading-relaxed font-semibold">Gunakan ID lengkap seperti tertera pada kartu atau nama lengkap murid untuk pencarian data.</p>
-                </div>
-
-                <button onclick="handleManualSubmit()" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-emerald-100 hover:bg-emerald-600 hover:-translate-y-0.5 transition-all">
-                    Catat Kehadiran
-                </button>
-            </div>
+          </form>
         </div>
-    </div>
+        {toast && (
+          <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-2xl text-white font-bold shadow-2xl z-50 animate-bounce ${toast.color}`}>
+            {toast.message}
+          </div>
+        )}
+      </div>
+    );
+  }
 
-    <!-- MODAL PRINT LAPORAN -->
-    <div id="printModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-6 backdrop-blur-md">
-        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 space-y-6">
-            <h3 class="text-lg font-black uppercase text-center">Cetak Daftar Hadir</h3>
-            <div class="space-y-4">
-                <select id="printClassCategory" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 font-bold text-sm">
-                    <option value="Semua">Semua Kelas</option>
-                    <option value="Cahaya">Kelas Cahaya</option>
-                    <option value="Bintang">Kelas Bintang</option>
-                    <option value="Pra Remaja">Kelas Pra Remaja</option>
-                </select>
-                <input type="text" id="teacherName" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 font-bold text-sm" placeholder="Nama Guru">
-            </div>
-            <div class="flex gap-2">
-                <button onclick="handleGenerateReport()" class="flex-1 bg-indigo-600 text-white py-4 rounded-xl font-black text-[10px] uppercase">Download PDF</button>
-                <button onclick="closeModal('printModal')" class="flex-1 bg-slate-100 text-slate-400 py-4 rounded-xl font-black text-[10px] uppercase">Batal</button>
-            </div>
+  return (
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans pb-20">
+      {/* Navbar */}
+      <nav className="sticky top-0 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 z-40 px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
+            <Church size={20} />
+          </div>
+          <div>
+            <h2 className="font-black text-sm uppercase tracking-tight">Immanuel SM</h2>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Dashboard Admin</p>
+          </div>
         </div>
-    </div>
+        <button 
+          onClick={() => setIsLoggedIn(false)}
+          className="bg-rose-50 text-rose-500 p-2.5 rounded-xl hover:bg-rose-100 transition-colors"
+        >
+          <LogOut size={20} />
+        </button>
+      </nav>
 
-    <!-- MODAL KIA -->
-    <div id="kiaModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-6 backdrop-blur-md">
-        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 space-y-6">
-            <h3 class="text-lg font-black uppercase text-center">Cetak Kartu KIA</h3>
-            <select id="kiaClassCategory" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 font-bold text-sm">
-                <option value="Semua">Semua Murid</option>
-                <option value="Cahaya">Kelas Cahaya</option>
-                <option value="Bintang">Kelas Bintang</option>
-                <option value="Pra Remaja">Kelas Pra Remaja</option>
-            </select>
-            <div class="flex gap-2">
-                <button onclick="handleGenerateKIA()" class="flex-1 bg-indigo-600 text-white py-4 rounded-xl font-black text-[10px] uppercase">Cetak KIA</button>
-                <button onclick="closeModal('kiaModal')" class="flex-1 bg-slate-100 text-slate-400 py-4 rounded-xl font-black text-[10px] uppercase">Batal</button>
+      <main className="max-w-7xl mx-auto p-6 space-y-8">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-5">
+            <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
+              <Users size={24} />
             </div>
-        </div>
-    </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Murid</p>
+              <h3 className="text-2xl font-black">{stats.total}</h3>
+            </div>
+          </div>
 
-    <script>
-        // Data Murid
-        const currentStudents = [
-            { id: "IMN-001", name: "Eldo Desenta Purba", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1N2mWe7lwcrPFlGD9AKr5ywJQrlImpKSf" },
-            { id: "IMN-002", name: "Fahlepta Surbakti", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1tioPYfFwvohFegtc5Qdwu2loEWYmL9zw" },
-            { id: "IMN-003", name: "Lexi Felicia", age: 12, school: "6 SD", class: "Cahaya", attendance: 0, photo: "1-MOF_UXawWKy8Wn7rV5Xpqxb6GtcNjlC" },
-            { id: "IMN-004", name: "Velizio Sitepu", age: 8, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1ZsW8SYwtE_58RV4mceMhnSn60yNAN1Fs" },
-            { id: "IMN-005", name: "Sergius Silalahi", age: 10, school: "4 SD", class: "Cahaya", attendance: 0, photo: "1r7VgfPc3RUPpRc7_44FjXGKQadwQ7I_Q" },
-            { id: "IMN-006", name: "Gabriel Ginting", age: 11, school: "4 SD", class: "Cahaya", attendance: 0, photo: "1LfqXQ_EvLpHmAyMgriv4Qxi0-rMFpaPz" },
-            { id: "IMN-007", name: "Ria Silalahi", age: 12, school: "5 SD", class: "Cahaya", attendance: 0, photo: "1tIyAEk0rvZtkSEJnjbbcGjdY2W94VAXz" },
-            { id: "IMN-008", name: "Elsa Purba", age: 11, school: "5 SD", class: "Cahaya", attendance: 0, photo: "12SgyOcrop0d-h6ny6_BfyNg4EkSSPcmp" },
-            { id: "IMN-009", name: "Enola", age: 11, school: "5 SD", class: "Cahaya", attendance: 0, photo: "1HrKwbW-h_Mc51aLVp48CShSaMJOAcQxy" },
-            { id: "IMN-010", name: "Adelia Sibarani", age: 11, school: "5 SD", class: "Cahaya", attendance: 0, photo: "1yoxiZ5MvxgvwQePZ4geZEqAlO2ycr7Ks" },
-            { id: "IMN-011", name: "Aurel Barus", age: 11, school: "5 SD", class: "Cahaya", attendance: 0, photo: "1y9REKuYi4T_ogTTuMvrnF8AibEyoUdjV" },
-            { id: "IMN-012", name: "Charlotte Sitanggang", age: 11, school: "6 SD", class: "Cahaya", attendance: 0, photo: "1cj8D-ArkF3O8m6MBGLD5XaM6VvV-Bhvr" },
-            { id: "IMN-013", name: "Vanesa Br Ginting", age: 12, school: "6 SD", class: "Cahaya", attendance: 0, photo: "1tr4uyD8EXFm2b0j0eN-DbjYMEoRIsBqn" },
-            { id: "IMN-014", name: "Evelin Br Ginting", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1yteDD45DOPZTPkyy3QfwABGhg3mbNU3Y" },
-            { id: "IMN-015", name: "Alvina Gabriella", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1j7hM7K1uZCczTq2MzlJaFAho9GEQQixf" },
-            { id: "IMN-016", name: "Kirel Adrelia Sibero", age: 9, school: "3 SD", class: "Cahaya", attendance: 0, photo: "15oXwGpvr8guegVLcmSYfusC-CT2zGJSO" },
-            { id: "IMN-017", name: "Ema Br Sinaga", age: 10, school: "4 SD", class: "Cahaya", attendance: 0, photo: "1yw3pwpdYFoSZJMwMcsE2PAeLvyQJivxl" },
-            { id: "IMN-018", name: "Okto Zendate", age: 12, school: "6 SD", class: "Cahaya", attendance: 0, photo: "1Yfnc19co2Izig3ayvJOqo7_fOretCEHh" },
-            { id: "IMN-019", name: "Adel Esterina Br Sinuraya", age: 11, school: "6 SD", class: "Cahaya", attendance: 0, photo: "1TRR4yrDrUb7M3JPVDv6-u0CiYLLWr5Kc" },
-            { id: "IMN-020", name: "Cristina Oktaviani Br Tarigan", age: 11, school: "5 SD", class: "Cahaya", attendance: 0, photo: "1h1AG74c_6_OpGR1q7dgXsKFDUD2HLdct" },
-            { id: "IMN-021", name: "Keren Eklesia Br Ginting", age: 11, school: "5 SD", class: "Cahaya", attendance: 0, photo: "1Gg4ImFYYqJxXsBK9YddWSZ8vwcXNxrqF" },
-            { id: "IMN-022", name: "Edgard Sharos Simbolon", age: 10, school: "4 SD", class: "Cahaya", attendance: 0, photo: "1g4uhJI41rTZtKpVhRrfc47yfxE0QfeGN" },
-            { id: "IMN-023", name: "Marzelo Geofrey", age: 12, school: "6 SD", class: "Cahaya", attendance: 0, photo: "1heYwpNOAntPe4wdk1EjN9lUM4VyyYgZF" },
-            { id: "IMN-024", name: "Adriel Tarigan", age: 10, school: "3 SD", class: "Cahaya", attendance: 0, photo: "1bah1CLdpnIwvYIiQvAGqQu7jSQRKLd-1" },
+          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-5">
+            <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+              <UserCheck size={24} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hadir Hari Ini</p>
+              <h3 className="text-2xl font-black">{stats.hadir}</h3>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-5">
+            <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center">
+              <TrendingUp size={24} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Persentase</p>
+              <h3 className="text-2xl font-black">{stats.percentage}%</h3>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => setModalType('absensi')}
+            className="bg-indigo-600 hover:bg-indigo-700 p-6 rounded-[2rem] shadow-xl shadow-indigo-100 text-white flex items-center gap-5 transition-all group"
+          >
+            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Keyboard size={24} />
+            </div>
+            <div className="text-left">
+              <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest">Pencatatan</p>
+              <h3 className="text-lg font-black uppercase">Input Manual</h3>
+            </div>
+          </button>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-3">
+          <button 
+            onClick={() => setModalType('report')}
+            className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest hover:brightness-125 transition-all"
+          >
+            <Printer size={16} /> Cetak Laporan
+          </button>
+          <button 
+            onClick={() => setModalType('kia')}
+            className="flex items-center gap-2 bg-white text-slate-900 border border-slate-200 px-6 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-all"
+          >
+            <CreditCard size={16} /> Cetak Kartu KIA
+          </button>
+        </div>
+
+        {/* Tabs & Search */}
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-wrap gap-2">
+              {['Semua', 'Cahaya', 'Bintang', 'Pra Remaja'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                    activeTab === tab 
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+                    : 'bg-white text-slate-400 border border-slate-100 hover:border-indigo-200'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
             
-            // KELAS BINTANG
-            { id: "IMN-0001", name: "Yafet Andreas Brahmana", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "1O0lRiRvYMzp02s1Ofx-sv3XVGiH0yjQu" },
-            { id: "IMN-0002", name: "Yesril Elvano Ginting", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "1QNTh97TyDCuEupE16pq81zB7jDIU5o9a" },
-            { id: "IMN-0003", name: "Yoel Ginting", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "1c_x_KaBGdkfV1PPZOb2oMwfea6hjS5rU" },
-            { id: "IMN-0004", name: "Giles Hagai Karo Karo", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "1Ngf2JMe6cTxH8_x4R1L9bgnq4re9S4Tz" },
-            { id: "IMN-0005", name: "Fahlef Surbakti", age: 9, school: "3 SD", class: "Bintang", attendance: 0, photo: "1dRNH9h-EimzAxgOxy6fni89lEEM1IAng" },
-            { id: "IMN-0007", name: "Maria Sibarani", age: 8, school: "1 SD", class: "Bintang", attendance: 0, photo: "1ExMpD2v7g4KA5zyHIjxFxlF_NZKct-Xn" },
-            { id: "IMN-0008", name: "Helda Sibarani", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "1OjISM805fKoktAIfg5EYXbv3WiaFlvys" },
-            { id: "IMN-0009", name: "Velika Adriella Br Sitepu", age: 4, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "1hvNyCl_3WOncaMa_vVqXuEB_gPJd7hoD" },
-            { id: "IMN-0010", name: "Gareth Dnoel Sombolon", age: 7, school: "1 SD", class: "Bintang", attendance: 0, photo: "1mHqulG0C69i1MXOU5xbHxD982eb5Ve0b" },
-            { id: "IMN-0011", name: "Rafa Sinaga", age: 8, school: "1 SD", class: "Bintang", attendance: 0, photo: "1LWN7B88q4hrU0rZsw9-zOGCkZLCWlnew" },
-            { id: "IMN-0012", name: "Tesalonika Sinaga", age: 3, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "1wcnpFl8nwOqJDTvxdzT9f75TmrMZa0AO" },
-            { id: "IMN-0013", name: "Desen Purba", age: 9, school: "3 SD", class: "Bintang", attendance: 0, photo: "1pBzraJnZyu-CPWkdQJmD7RE73tJG0HJv" },
-            { id: "IMN-0014", name: "Elyora Purba", age: 4, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "1hFdZcmRjxYWAx7s8DS_Q_9-P1OmEu66W" },
-            { id: "IMN-0015", name: "Elzira Br Ginting", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "1uYTBx7L6T3XKpLn4p_YKWhhsT-uBUe_7" },
-            { id: "IMN-0016", name: "Jesen Sitepu", age: 2, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "16egK2BXQt7pnQLGnbdv_ionLcV2WlAHA" },
-            { id: "IMN-0017", name: "Aksel Natan Silalahi", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "1LYIy91a_VMElFttMMnHwebYCUJUuZgcJ" },
-            { id: "IMN-0018", name: "Hesen Sitepu", age: 7, school: "1 SD", class: "Bintang", attendance: 0, photo: "1kMHFQXZDqFKVu_79j0rtxwqZZKmqyOH2" },
-            { id: "IMN-0019", name: "Ilona Siahaan", age: 1, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "1EOOtEPfksPQj3Sqpjhit7Hd1ULGleKJx" },
-            { id: "IMN-0020", name: "Jediarga Ginting (Jeje)", age: 5, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "1k3z-T_-sufROMLAjbLYbvGPj3kYdpAO5" },
-            { id: "IMN-0021", name: "Alvito Lubis", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "1iD4JdpVRdO6Pp40gwEfAoMacY5q7IEPg" },
-            { id: "IMN-0022", name: "Dea Elnora Br purba", age: 8, school: "2 SD", class: "Bintang", attendance: 0, photo: "1dqha2EwcSMVMF94vzNwoQsyxJoFLUgbd" },
-            { id: "IMN-0023", name: "Jesifa Acira Fayona", age: 8, school: "1 SD", class: "Bintang", attendance: 0, photo: "1bVU0zjQDayIJbNFyW88ADO5nY0kVKO7J" },
-            { id: "IMN-0024", name: "Kavya Miracle Joe", age: 7, school: "TK", class: "Bintang", attendance: 0, photo: "1H8KKbTm8awGy3eBkhto-wHdotAiNIOa6" },
-            { id: "IMN-0025", name: "Zivya Miracle Joe", age: 7, school: "TK", class: "Bintang", attendance: 0, photo: "1HJo8efC9_jIBWiAQ7T1ut_X8wAjlEd9T" },
-            { id: "IMN-0026", name: "Clairine Misella Br Ginting", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "1spOkYjpmXVbK-bkxhMiFTiblkwt4khXK" },
-            { id: "IMN-0027", name: "Gloria Cantika Br Simanjorang", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "1KoGONHl_9MmpnILAYzlmgRzqX-QE4MxG" },
-            { id: "IMN-0028", name: "Diva Bintang", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "1DzAz2R6RLXNoD441AxoiDoFCqMIoHlYd" },
-            { id: "IMN-0029", name: "Mika Ulisinar Sihite", age: 10, school: "3 SD", class: "Bintang", attendance: 0, photo: "1Srl8CNfQ6Z97_0GRFXkog1KOWArrs8ec" },
-            { id: "IMN-0030", name: "Aurelia Br Tarigan", age: 6, school: "TK", class: "Bintang", attendance: 0, photo: "1aDIIJesac_MsoZZqvcMpDC7aJi9MRy0A" },
-            { id: "IMN-0031", name: "Joe Rapha Ginting", age: 1, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "13uDFYHuLzQxQdZGDC3EyZ0JZUW8rprIl" },
-            { id: "IMN-0032", name: "Chasia Queensa Br Ginting", age: 6, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "19i7sj8V-qxNkyDUHIn6YshkOIGbDTANv" },
-            { id: "IMN-0033", name: "Axel Kenneth Ginting", age: 3, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "1lU5KDXuWwlbmpQI0Afn0hKV4oPZ0puVU" },
-            { id: "IMN-0034", name: "Revanya Abigail Br Surbakti", age: 9, school: "2", class: "Bintang", attendance: 0, photo: "1n1LujZ-u0FMyNbMtCOb_IoiFyUfTuRhP" },
-            { id: "IMN-0035", name: "Thiago Ginting", age: 5, school: "Belum Sekolah", class: "Bintang", attendance: 0, photo: "1ZTmACpCjcpTJAhFSFN92jxlCVbh3aILb" },
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
+              <input 
+                type="text" 
+                placeholder="Cari nama murid..."
+                className="bg-white border border-slate-100 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-semibold outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 transition-all w-full md:w-80"
+              />
+            </div>
+          </div>
 
-            //Kelas Pra Remaja
-            { id: "IMN-0001", name: "Cristiano de Caprio ", age:13, school: "-", class: "Pra-Remaja", attendance: 0, photo: "1xT3SRcLx6IWYH3M9yLIArZ8w0BxGfQZj" },
-            { id: "IMN-0002", name: "Risky tuahta bangun ", age:15, school: "-", class: "Pra-Remaja", attendance: 0, photo: "1f-Dz_4kpezqsti7zUoXXN4pQkpJyAMwX" },
-            { id: "IMN-0003", name: "Yonatan ceristian Sitepu ", age:13, school: "-", class: "Pra-Remaja", attendance: 0, photo: "1AQ0PzisxdHRWNcnyGWulvw6Rs-9-A1o_" },
-            { id: "IMN-0004", name: "Calvien Aldiano Sagala", age:12, school: "-", class: "Pra-Remaja", attendance: 0, photo: "1seA2C_QMVJHo2q7OyBW5B_L5rSbuKhWA" },
-            { id: "IMN-0005", name: "Mario ramah suka purba ", age:15, school: "-", class: "Pra-Remaja", attendance: 0, photo: "1cV_2dMJ-rcbDOjM1hPvca1lob9Gsujpx" },
-            { id: "IMN-0006", name: "Rafael ", age:14, school: "-", class: "Pra-Remaja", attendance: 0, photo: "1SmKxhk89MmP3upIWUCtzMjZnUkdSaBb6" },
-            { id: "IMN-0007", name: "Griselda Fidelis Br Tarigan ", age:13, school: "-", class: "Pra-Remaja", attendance: 0, photo: "1BiJssjOLtj5Zm18aZebNxrSN7VlgX0we" },
-            { id: "IMN-0008", name: "Mila Febriani br Silalahi ", age:14, school: "-", class: "Pra-Remaja", attendance: 0, photo: "1pvhSfp0RGaXsV1Kcft9MxbmimXpIJvpu" },
-            { id: "IMN-0009", name: "Nadine Izura Kinata Kembaren ", age:14, school: "-", class: "Pra-Remaja", attendance: 0, photo: "1srtWCBLmZOcnyE9JLtWNIO_W0v3SeDCv" },
-            { id: "IMN-00010", name: "Nasya Ekklesia Mendrofa", age:13, school: "-", class: "Pra-Remaja", attendance: 0, photo: "1GpdgLtUwulwQDZ6Epez4bcCzdM8MY8y3" },
-            { id: "IMN-00011", name: "Nachelle Olivia Sitanggang", age:13, school: "-", class: "Pra-Remaja", attendance: 0, photo: "191NnQ1UP1VYbTA8R_LwXFLTQEvbNAtuQ" },
-            { id: "IMN-00012", name: "Heppi Muliahati Silalahi", age:13, school: "-", class: "Pra-Remaja", attendance: 0, photo: "1ireVA5g0lNE6t4lhUPW-oGwlnWeYQcW2" }
+          {/* Student Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-5">
+            {filteredStudents.map((s) => {
+              const today = new Date().toISOString().split('T')[0];
+              const isHadir = (attendanceRecords[s.id] || []).includes(today);
+              const photoUrl = `https://lh3.googleusercontent.com/d/${s.photo}`;
 
-
-
-        ];
-
-        let currentFilter = "Semua";
-        let isProcessing = false;
-
-        // Login Handler
-        function handleLogin(e) {
-            e.preventDefault();
-            const u = document.getElementById('username').value;
-            const p = document.getElementById('password').value;
-            if(u === "SM2026" && p === "Imn2026") {
-                document.getElementById('loginPage').classList.add('hidden');
-                document.getElementById('dashboardPage').classList.remove('hidden');
-                renderDashboard();
-                showToast("LOGIN BERHASIL", "bg-indigo-600");
-                lucide.createIcons();
-            } else {
-                showToast("USERNAME/PASS SALAH", "bg-rose-500");
-            }
-        }
-
-        function logout() {
-            document.getElementById('dashboardPage').classList.add('hidden');
-            document.getElementById('loginPage').classList.remove('hidden');
-        }
-
-        // Dashboard & Filter Logic
-        function renderDashboard() {
-            const grid = document.getElementById('studentGrid');
-            const filtered = currentFilter === "Semua" ? currentStudents : currentStudents.filter(s => s.class === currentFilter);
-            document.getElementById('statTotal').innerText = currentStudents.length;
-            grid.innerHTML = "";
-
-            filtered.forEach(s => {
-                const photoUrl = s.photo ? `https://lh3.googleusercontent.com/d/${s.photo}` : `https://api.dicebear.com/7.x/initials/png?seed=${s.name}`;
-                grid.innerHTML += `
-                    <div id="card-${s.id}" class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm text-center transition-all duration-300">
-                        <div class="relative inline-block">
-                             <img src="${photoUrl}" class="w-20 h-20 rounded-2xl mx-auto mb-2 object-cover bg-slate-50 border-2 border-indigo-50" onerror="this.src='https://api.dicebear.com/7.x/initials/png?seed=${s.name}'">
-                             <div class="absolute -top-1 -right-1 bg-indigo-600 text-white text-[8px] font-bold px-2 py-0.5 rounded-full">${s.age} Thn</div>
-                        </div>
-                        <h4 class="text-[10px] font-black uppercase truncate px-1 text-slate-800">${s.name}</h4>
-                        <div class="flex flex-col gap-0.5 mt-1">
-                             <p class="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">${s.id}</p>
-                             <p class="text-[8px] text-indigo-400 font-extrabold uppercase">${s.school}</p>
-                        </div>
-                        <div class="mt-3 flex items-center justify-center gap-2">
-                            <div class="px-3 py-1 bg-slate-50 text-slate-600 rounded-lg border border-slate-100">
-                                <span class="text-[9px] font-black uppercase">Hadir: ${s.attendance}</span>
-                            </div>
-                        </div>
+              return (
+                <div key={s.id} className={`group relative bg-white rounded-[2rem] p-4 border transition-all duration-300 ${isHadir ? 'border-emerald-200 shadow-lg shadow-emerald-50' : 'border-slate-100 hover:border-indigo-200 shadow-sm'}`}>
+                  {isHadir && (
+                    <div className="absolute -top-2 -right-2 bg-emerald-500 text-white p-1.5 rounded-full shadow-lg z-10 animate-pulse">
+                      <CheckCircle2 size={14} />
                     </div>
-                `;
-            });
-        }
+                  )}
+                  <div className="relative overflow-hidden rounded-2xl mb-4 aspect-square bg-slate-50">
+                    <img 
+                      src={photoUrl} 
+                      alt={s.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      onError={(e) => { e.target.src = `https://api.dicebear.com/7.x/initials/png?seed=${s.name}` }}
+                    />
+                    <div className="absolute bottom-2 right-2 bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">
+                      {s.age} Thn
+                    </div>
+                  </div>
+                  <h4 className="font-black text-[11px] uppercase tracking-tight line-clamp-1 mb-1">{s.name}</h4>
+                  <div className="flex flex-col gap-0.5 mb-3">
+                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">{s.id}</p>
+                    <p className="text-[8px] text-indigo-500 font-extrabold uppercase">{s.school}</p>
+                  </div>
+                  <div className="flex items-center justify-between mt-auto pt-3 border-t border-slate-50">
+                    <div className="flex items-center gap-1 text-slate-400">
+                      <Award size={10} />
+                      <span className="text-[9px] font-bold">{(attendanceRecords[s.id] || []).length}</span>
+                    </div>
+                    <span className={`text-[8px] font-black px-2 py-1 rounded-lg uppercase ${isHadir ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'}`}>
+                      {isHadir ? 'Sudah Absen' : 'Belum'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </main>
 
-        function filterClass(c) {
-            currentFilter = c;
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                b.classList.remove('bg-indigo-600', 'text-white');
-                b.classList.add('bg-white', 'text-slate-400');
-                if(b.innerText.toLowerCase() === c.toLowerCase() || (b.innerText === "Semua" && c === "Semua")) {
-                    b.classList.add('bg-indigo-600', 'text-white');
-                    b.classList.remove('bg-white', 'text-slate-400');
-                }
-            });
-            renderDashboard();
-        }
-
-        // Modal Management
-        function openAbsensiModal() {
-            document.getElementById('absensiModal').classList.remove('hidden');
-            setTimeout(() => document.getElementById('manualInput').focus(), 100);
-        }
-
-        function openPrintModal() { document.getElementById('printModal').classList.remove('hidden'); }
-        function openKIAModal() { document.getElementById('kiaModal').classList.remove('hidden'); }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.add('hidden');
-        }
-
-        // Core Manual Absensi Logic
-        function handleManualSubmit() {
-            if(isProcessing) return;
+      {/* Modals */}
+      {modalType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setModalType(null)} />
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 p-10 overflow-hidden">
             
-            const inputVal = document.getElementById('manualInput').value.trim().toUpperCase();
-            if(!inputVal) return;
+            {modalType === 'absensi' && (
+              <div className="space-y-8">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-2xl font-black uppercase tracking-tight">Input Absensi</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gunakan ID atau Nama Lengkap</p>
+                  </div>
+                  <button onClick={() => setModalType(null)} className="p-2 hover:bg-rose-50 text-slate-300 hover:text-rose-500 transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <input 
+                    autoFocus
+                    type="text" 
+                    placeholder="IMN-0XX / NAMA MURID"
+                    value={manualInput}
+                    onChange={(e) => setManualInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleManualAbsensi()}
+                    className="w-full bg-slate-50 border-2 border-slate-100 focus:border-indigo-500 rounded-3xl px-8 py-5 text-center text-xl font-black uppercase outline-none transition-all"
+                  />
+                  <div className="bg-indigo-50 p-5 rounded-2xl flex items-start gap-4">
+                    <div className="bg-indigo-100 p-2 rounded-xl text-indigo-600 shrink-0">
+                      <Keyboard size={18} />
+                    </div>
+                    <p className="text-[10px] text-indigo-400 leading-relaxed font-bold">
+                      TIP: Tekan 'Enter' pada keyboard untuk memproses data lebih cepat. Pastikan ID sesuai dengan kartu KIA murid.
+                    </p>
+                  </div>
+                  <button 
+                    onClick={handleManualAbsensi}
+                    className="w-full bg-emerald-500 text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-emerald-100 hover:bg-emerald-600 transition-all"
+                  >
+                    Konfirmasi Kehadiran
+                  </button>
+                </div>
+              </div>
+            )}
 
-            isProcessing = true;
-            
-            // Search by ID or EXACT Name
-            const student = currentStudents.find(s => s.id === inputVal || s.name.toUpperCase() === inputVal);
-            
-            if(student) {
-                student.attendance += 1;
-                showToast(`BERHASIL: ${student.name}`, "bg-emerald-500");
-                renderDashboard();
-                
-                // Highlight the card
-                const card = document.getElementById(`card-${student.id}`);
-                if(card) {
-                    card.classList.add('scan-success', 'ring-4', 'ring-emerald-400');
-                    setTimeout(() => card.classList.remove('scan-success', 'ring-4', 'ring-emerald-400'), 2000);
-                }
+            {modalType === 'report' && (
+              <div className="space-y-8">
+                 <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-2xl font-black uppercase tracking-tight">Cetak Laporan</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Download Format PDF</p>
+                  </div>
+                  <button onClick={() => setModalType(null)} className="p-2 hover:bg-rose-50 text-slate-300 hover:text-rose-500 transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Nama Guru Pengajar</label>
+                    <input 
+                      type="text" 
+                      placeholder="Masukkan nama guru..."
+                      value={teacherName}
+                      onChange={(e) => setTeacherName(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 font-semibold outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-500 text-center uppercase">Laporan akan dibuat untuk kelas: <br/><span className="text-indigo-600 text-sm font-black">{activeTab}</span></p>
+                  </div>
+                  <button 
+                    onClick={generateReport}
+                    className="w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:brightness-125 transition-all"
+                  >
+                    Unduh Laporan PDF
+                  </button>
+                </div>
+              </div>
+            )}
 
-                // Audio Welcome
-                const speech = new SpeechSynthesisUtterance(`Halo ${student.name}, kehadiran berhasil dicatat`);
-                speech.lang = 'id-ID';
-                window.speechSynthesis.speak(speech);
+            {modalType === 'kia' && (
+              <div className="text-center space-y-6 py-4">
+                <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl mx-auto flex items-center justify-center">
+                  <CreditCard size={40} />
+                </div>
+                <h3 className="text-xl font-black uppercase">Cetak Kartu KIA</h3>
+                <p className="text-sm text-slate-400 font-medium leading-relaxed px-4">
+                  Gunakan fitur ini untuk mencetak kartu fisik murid agar dapat dipindai (Scan) melalui portal ini di masa mendatang.
+                </p>
+                <button 
+                  onClick={() => {
+                    showToast("Fitur sedang dikembangkan...", "bg-indigo-600");
+                    setModalType(null);
+                  }}
+                  className="w-full bg-indigo-600 text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-lg hover:brightness-110"
+                >
+                  Proses Pencetakan KIA
+                </button>
+              </div>
+            )}
 
-                document.getElementById('manualInput').value = "";
-                setTimeout(() => {
-                    isProcessing = false;
-                    document.getElementById('manualInput').focus();
-                }, 1000);
-            } else {
-                showToast("DATA TIDAK DITEMUKAN", "bg-rose-500");
-                setTimeout(() => isProcessing = false, 1000);
-            }
-        }
+          </div>
+        </div>
+      )}
 
-        // Global Toast
-        function showToast(msg, color) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.className = `fixed top-5 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full text-white font-bold z-[100] shadow-2xl text-[10px] uppercase tracking-widest transition-all duration-300 pointer-events-none ${color}`;
-            t.style.opacity = "1";
-            setTimeout(() => t.style.opacity = "0", 3000);
-        }
-
-        // Helpers for PDF
-        async function getBase64FromUrl(url) {
-            try {
-                const response = await fetch(url);
-                const blob = await response.blob();
-                return new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.readAsDataURL(blob);
-                });
-            } catch { return null; }
-        }
-
-        // Report & KIA Generation (Sesuai Permintaan Sebelumnya)
-        async function handleGenerateKIA() {
-            const overlay = document.getElementById('loadingOverlay');
-            const category = document.getElementById('kiaClassCategory').value;
-            const filtered = category === "Semua" ? currentStudents : currentStudents.filter(s => s.class === category);
-            
-            overlay.style.display = 'flex';
-            document.getElementById('loadingText').innerText = "MENYIAPKAN KARTU...";
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'mm', 'a4');
-            const w = 85, h = 55, gap = 5;
-
-            for(let i=0; i<filtered.length; i++) {
-                if(i > 0 && i % 8 === 0) doc.addPage();
-                const s = filtered[i];
-                const col = i % 2, row = Math.floor((i % 8) / 2);
-                const x = 10 + (col * (w + gap)), y = 10 + (row * (h + gap));
-
-                doc.setDrawColor(220); doc.setFillColor(255);
-                doc.roundedRect(x, y, w, h, 3, 3, 'FD');
-                
-                doc.setFillColor(79, 70, 229);
-                doc.roundedRect(x, y, w, 10, 3, 3, 'F');
-                doc.rect(x, y+5, w, 5, 'F');
-                doc.setTextColor(255); doc.setFontSize(8); 
-                doc.text("KARTU ABSENSI GPdI IMMANUEL", x + w/2, y + 6, {align:'center'});
-
-                doc.setFillColor(245);
-                doc.roundedRect(x + 5, y + 14, 20, 25, 2, 2, 'F');
-                const photoData = await getBase64FromUrl(`https://lh3.googleusercontent.com/d/${s.photo}`);
-                if(photoData) doc.addImage(photoData, 'JPEG', x + 6, y + 15, 18, 23);
-
-                doc.setTextColor(30); doc.setFontSize(9); doc.text(s.name.toUpperCase(), x + 28, y + 18);
-                doc.setFontSize(7); doc.setTextColor(100);
-                doc.text(`ID: ${s.id}`, x + 28, y + 23);
-                doc.text(`KELAS: ${s.class}`, x + 28, y + 27);
-                doc.text(`SEKOLAH: ${s.school}`, x + 28, y + 31);
-
-                const canvas = document.createElement('canvas');
-                JsBarcode(canvas, s.id, { format: "CODE128", height: 30, displayValue: false });
-                doc.addImage(canvas.toDataURL(), 'PNG', x + 28, y + 35, 50, 12);
-            }
-
-            doc.save(`KIA_GPdI_${category}.pdf`);
-            overlay.style.display = 'none';
-            closeModal('kiaModal');
-        }
-
-        function handleGenerateReport() {
-            const category = document.getElementById('printClassCategory').value;
-            const teacher = document.getElementById('teacherName').value || "Guru Pembimbing";
-            const filtered = category === "Semua" ? currentStudents : currentStudents.filter(s => s.class === category);
-            
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            doc.setFontSize(16); doc.text("LAPORAN KEHADIRAN SEKOLAH MINGGU", 105, 20, {align:'center'});
-            doc.setFontSize(10); doc.text(`GPdI Immanuel Berastagi | Kelas: ${category}`, 105, 28, {align:'center'});
-            doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 105, 34, {align:'center'});
-
-            const body = filtered.map((s, i) => [i+1, s.id, s.name, s.class, s.attendance > 0 ? '1' : '0']);
-            
-            doc.autoTable({
-                startY: 45,
-                head: [['NO', 'ID', 'NAMA MURID', 'KELAS', 'STATUS']],
-                body: body,
-                theme: 'grid',
-                headStyles: { fillColor: [79, 70, 229] }
-            });
-
-            const finalY = doc.lastAutoTable.finalY + 20;
-            doc.text("Mengetahui,", 150, finalY);
-            doc.text(teacher, 150, finalY + 25);
-
-            doc.save(`Laporan_Absensi_${category}.pdf`);
-            closeModal('printModal');
-        }
-
-        window.onload = () => lucide.createIcons();
-    </script>
-</body>
-</html>
+      {/* Global Toast */}
+      {toast && (
+        <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-white font-black text-[10px] uppercase tracking-widest shadow-2xl z-[100] animate-in fade-in slide-in-from-bottom-5 duration-300 ${toast.color}`}>
+          {toast.message}
+        </div>
+      )}
+    </div>
+  );
+}
