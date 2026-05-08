@@ -1,616 +1,484 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Church, 
-  Users, 
-  LogOut, 
-  Plus, 
-  Search, 
-  Printer, 
-  CreditCard, 
-  CheckCircle2, 
-  X, 
-  Keyboard,
-  UserCheck,
-  TrendingUp,
-  Award,
-  Calendar,
-  Baby,
-  Smile,
-  Trash2,
-  AlertCircle
-} from 'lucide-react';
-
-const INITIAL_STUDENTS = [
-    // KELAS CAHAYA
-    { id: "IMN-001", name: "Eldo Desenta Purba", age: 9, school: "3 SD", class: "Cahaya" },
-    { id: "IMN-002", name: "Fahlepta Surbakti", age: 9, school: "3 SD", class: "Cahaya" },
-    { id: "IMN-003", name: "Lexi Felicia", age: 12, school: "6 SD", class: "Cahaya" },
-    { id: "IMN-004", name: "Velizio Sitepu", age: 8, school: "3 SD", class: "Cahaya" },
-    { id: "IMN-005", name: "Sergius Silalahi", age: 10, school: "4 SD", class: "Cahaya" },
-    { id: "IMN-006", name: "Gabriel Ginting", age: 11, school: "4 SD", class: "Cahaya" },
-    { id: "IMN-007", name: "Ria Silalahi", age: 12, school: "5 SD", class: "Cahaya" },
-    { id: "IMN-008", name: "Elsa Purba", age: 11, school: "5 SD", class: "Cahaya" },
-    { id: "IMN-009", name: "Enola", age: 11, school: "5 SD", class: "Cahaya" },
-    { id: "IMN-010", name: "Adelia Sibarani", age: 11, school: "5 SD", class: "Cahaya" },
-    { id: "IMN-011", name: "Aurel Barus", age: 11, school: "5 SD", class: "Cahaya" },
-    { id: "IMN-012", name: "Charlotte Sitanggang", age: 11, school: "6 SD", class: "Cahaya" },
-    { id: "IMN-013", name: "Vanesa Br Ginting", age: 12, school: "6 SD", class: "Cahaya" },
-    { id: "IMN-014", name: "Evelin Br Ginting", age: 9, school: "3 SD", class: "Cahaya" },
-    { id: "IMN-015", name: "Alvina Gabriella", age: 9, school: "3 SD", class: "Cahaya" },
-    { id: "IMN-016", name: "Kirel Adrelia Sibero", age: 9, school: "3 SD", class: "Cahaya" },
-    { id: "IMN-017", name: "Ema Br Sinaga", age: 10, school: "4 SD", class: "Cahaya" },
-    { id: "IMN-018", name: "Okto Zendate", age: 12, school: "6 SD", class: "Cahaya" },
-    { id: "IMN-019", name: "Adel Esterina Br Sinuraya", age: 11, school: "6 SD", class: "Cahaya" },
-    { id: "IMN-020", name: "Cristina Oktaviani Br Tarigan", age: 11, school: "5 SD", class: "Cahaya" },
-    { id: "IMN-021", name: "Keren Eklesia Br Ginting", age: 11, school: "5 SD", class: "Cahaya" },
-    { id: "IMN-022", name: "Edgard Sharos Simbolon", age: 10, school: "4 SD", class: "Cahaya" },
-    { id: "IMN-023", name: "Marzelo Geofrey", age: 12, school: "6 SD", class: "Cahaya" },
-    { id: "IMN-024", name: "Adriel Tarigan", age: 10, school: "3 SD", class: "Cahaya" },
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Absensi - GPdI Immanuel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     
-    // KELAS BINTANG
-    { id: "IMN-0001", name: "Yafet Andreas Brahmana", age: 8, school: "2 SD", class: "Bintang" },
-    { id: "IMN-0002", name: "Yesril Elvano Ginting", age: 8, school: "2 SD", class: "Bintang" },
-    { id: "IMN-0003", name: "Yoel Ginting", age: 8, school: "2 SD", class: "Bintang" },
-    { id: "IMN-0004", name: "Giles Hagai Karo Karo", age: 8, school: "2 SD", class: "Bintang" },
-    { id: "IMN-0005", name: "Fahlef Surbakti", age: 9, school: "3 SD", class: "Bintang" },
-    { id: "IMN-0007", name: "Maria Sibarani", age: 8, school: "1 SD", class: "Bintang" },
-    { id: "IMN-0008", name: "Helda Sibarani", age: 6, school: "TK", class: "Bintang" },
-    { id: "IMN-0009", name: "Velika Adriella Br Sitepu", age: 4, school: "Belum Sekolah", class: "Bintang" },
-    { id: "IMN-0010", name: "Gareth Dnoel Sombolon", age: 7, school: "1 SD", class: "Bintang" },
-    { id: "IMN-0011", name: "Rafa Sinaga", age: 8, school: "1 SD", class: "Bintang" },
-    { id: "IMN-0012", name: "Tesalonika Sinaga", age: 3, school: "Belum Sekolah", class: "Bintang" },
-    { id: "IMN-0013", name: "Desen Purba", age: 9, school: "3 SD", class: "Bintang" },
-    { id: "IMN-0014", name: "Elyora Purba", age: 4, school: "Belum Sekolah", class: "Bintang" },
-    { id: "IMN-0015", name: "Elzira Br Ginting", age: 8, school: "2 SD", class: "Bintang" },
-    { id: "IMN-0016", name: "Jesen Sitepu", age: 2, school: "Belum Sekolah", class: "Bintang" },
-    { id: "IMN-0017", name: "Aksel Natan Silalahi", age: 6, school: "TK", class: "Bintang" },
-    { id: "IMN-0018", name: "Hesen Sitepu", age: 7, school: "1 SD", class: "Bintang" },
-    { id: "IMN-0019", name: "Ilona Siahaan", age: 1, school: "Belum Sekolah", class: "Bintang" },
-    { id: "IMN-0020", name: "Jediarga Ginting (Jeje)", age: 5, school: "Belum Sekolah", class: "Bintang" },
-    { id: "IMN-0021", name: "Alvito Lubis", age: 6, school: "TK", class: "Bintang" },
-    { id: "IMN-0022", name: "Dea Elnora Br purba", age: 8, school: "2 SD", class: "Bintang" },
-    { id: "IMN-0023", name: "Jesifa Acira Fayona", age: 8, school: "1 SD", class: "Bintang" },
-    { id: "IMN-0024", name: "Kavya Miracle Joe", age: 7, school: "TK", class: "Bintang" },
-    { id: "IMN-0025", name: "Zivya Miracle Joe", age: 7, school: "TK", class: "Bintang" },
-    { id: "IMN-0026", name: "Clairine Misella Br Ginting", age: 6, school: "TK", class: "Bintang" },
-    { id: "IMN-0027", name: "Gloria Cantika Br Simanjorang", age: 6, school: "TK", class: "Bintang" },
-    { id: "IMN-0028", name: "Diva Bintang", age: 6, school: "TK", class: "Bintang" },
-    { id: "IMN-0029", name: "Mika Ulisinar Sihite", age: 10, school: "3 SD", class: "Bintang" },
-    { id: "IMN-0030", name: "Aurelia Br Tarigan", age: 6, school: "TK", class: "Bintang" },
-    { id: "IMN-0031", name: "Joe Rapha Ginting", age: 1, school: "Belum Sekolah", class: "Bintang" },
-    { id: "IMN-0032", name: "Chasia Queensa Br Ginting", age: 6, school: "Belum Sekolah", class: "Bintang" },
-    { id: "IMN-0033", name: "Axel Kenneth Ginting", age: 3, school: "Belum Sekolah", class: "Bintang" },
-    { id: "IMN-0034", name: "Revanya Abigail Br Surbakti", age: 9, school: "2 SD", class: "Bintang" },
-    { id: "IMN-0035", name: "Thiago Ginting", age: 5, school: "Belum Sekolah", class: "Bintang" },
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .scale-in-center { animation: scale-in-center 0.3s cubic-bezier(0.250, 0.460, 0.450, 0.940) both; }
+        @keyframes scale-in-center { 
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .id-card-bg { background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
 
-    // KELAS PRA REMAJA
-    { id: "IMN-0040", name: "Cristiano de Caprio", age: 13, school: "-", class: "Pra Remaja" },
-    { id: "IMN-0041", name: "Risky Tuahta Bangun", age: 15, school: "-", class: "Pra Remaja" },
-    { id: "IMN-0042", name: "Yonatan Ceristian Sitepu", age: 13, school: "-", class: "Pra Remaja" },
-    { id: "IMN-0043", name: "Calvien Aldiano Sagala", age: 12, school: "-", class: "Pra Remaja" },
-    { id: "IMN-0044", name: "Mario Ramah Suka Purba", age: 15, school: "-", class: "Pra Remaja" },
-    { id: "IMN-0045", name: "Rafael", age: 14, school: "-", class: "Pra Remaja" },
-    { id: "IMN-0046", name: "Griselda Fidelis Br Tarigan", age: 13, school: "-", class: "Pra Remaja" },
-    { id: "IMN-0047", name: "Mila Febriani Br Silalahi", age: 14, school: "-", class: "Pra Remaja" },
-    { id: "IMN-0048", name: "Nadine Izura Kinata Kembaren", age: 14, school: "-", class: "Pra Remaja" },
-    { id: "IMN-0049", name: "Nasya Ekklesia Mendrofa", age: 13, school: "-", class: "Pra Remaja" },
-    { id: "IMN-0050", name: "Nachelle Olivia Sitanggang", age: 13, school: "-", class: "Pra Remaja" },
-    { id: "IMN-0051", name: "Heppi Muliahati Silalahi", age: 13, school: "-", class: "Pra Remaja" }
-];
-
-export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
-  const [attendanceRecords, setAttendanceRecords] = useState({});
-  const [activeTab, setActiveTab] = useState('Semua');
-  const [modalType, setModalType] = useState(null);
-  const [toast, setToast] = useState(null);
-  const [manualInput, setManualInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [teacherName, setTeacherName] = useState('');
-
-  useEffect(() => {
-    // Load attendance from localStorage
-    try {
-      const savedAttendance = localStorage.getItem('immanuel_attendance_v1');
-      if (savedAttendance) {
-        setAttendanceRecords(JSON.parse(savedAttendance));
-      }
-    } catch (e) {
-      console.error("Failed to load attendance", e);
-    }
-
-    // Load PDF libraries
-    const scripts = [
-      'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js'
-    ];
-    
-    scripts.forEach(src => {
-      if (!document.querySelector(`script[src="${src}"]`)) {
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = true;
-        document.body.appendChild(script);
-      }
-    });
-  }, []);
-
-  const saveAttendance = (newRecords) => {
-    setAttendanceRecords(newRecords);
-    localStorage.setItem('immanuel_attendance_v1', JSON.stringify(newRecords));
-  };
-
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (credentials.username === "SM2026" && credentials.password === "Imn2026") {
-      setIsLoggedIn(true);
-      showToast("Selamat Datang di Portal Absensi!", "bg-indigo-600");
-    } else {
-      showToast("Username atau Password Salah", "bg-rose-500");
-    }
-  };
-
-  const showToast = (message, color) => {
-    setToast({ message, color });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const handleAbsensi = (studentId) => {
-    const today = new Date().toISOString().split('T')[0];
-    const student = INITIAL_STUDENTS.find(s => s.id === studentId);
-    
-    if (!student) return;
-
-    const newRecords = { ...attendanceRecords };
-    if (!newRecords[studentId]) newRecords[studentId] = [];
-    
-    if (newRecords[studentId].includes(today)) {
-      showToast(`${student.name} sudah absen hari ini`, "bg-amber-500");
-    } else {
-      newRecords[studentId] = [...newRecords[studentId], today];
-      saveAttendance(newRecords);
-      showToast(`Berhasil mencatat kehadiran ${student.name}`, "bg-emerald-500");
-      
-      // Voice greeting
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); // Stop current speech
-        const msg = new SpeechSynthesisUtterance(`Selamat datang, ${student.name}`);
-        msg.lang = 'id-ID';
-        window.speechSynthesis.speak(msg);
-      }
-    }
-  };
-
-  const handleManualAbsensi = () => {
-    const query = manualInput.trim().toUpperCase();
-    const student = INITIAL_STUDENTS.find(s => 
-      s.id.toUpperCase() === query || 
-      s.name.toUpperCase() === query
-    );
-
-    if (student) {
-      handleAbsensi(student.id);
-      setManualInput('');
-      setModalType(null);
-    } else {
-      showToast("Data Murid tidak ditemukan", "bg-rose-500");
-    }
-  };
-
-  const filteredStudents = useMemo(() => {
-    return INITIAL_STUDENTS.filter(s => {
-      const matchTab = activeTab === 'Semua' || s.class === activeTab;
-      const matchSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          s.id.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchTab && matchSearch;
-    });
-  }, [activeTab, searchQuery]);
-
-  const stats = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const presentToday = Object.values(attendanceRecords).filter(dates => dates.includes(today)).length;
-    return {
-      total: INITIAL_STUDENTS.length,
-      present: presentToday,
-      percentage: Math.round((presentToday / INITIAL_STUDENTS.length) * 100) || 0
-    };
-  }, [attendanceRecords]);
-
-  const downloadPDFReport = () => {
-    const jspdfLib = window.jspdf;
-    if (!jspdfLib) return showToast("Library PDF sedang dimuat, tunggu sebentar...", "bg-amber-500");
-    
-    const { jsPDF } = jspdfLib;
-    const doc = new jsPDF();
-    const today = new Date().toLocaleDateString('id-ID');
-
-    doc.setFontSize(18);
-    doc.text("LAPORAN ABSENSI SEKOLAH MINGGU", 105, 20, { align: 'center' });
-    doc.setFontSize(12);
-    doc.text(`GPdI Immanuel - Tanggal: ${today}`, 105, 30, { align: 'center' });
-    doc.text(`Guru Pendamping: ${teacherName || '_________________'}`, 20, 40);
-
-    const todayISO = new Date().toISOString().split('T')[0];
-    const tableData = filteredStudents.map((s, index) => {
-      const isPresent = (attendanceRecords[s.id] || []).includes(todayISO);
-      return [index + 1, s.id, s.name, s.class, isPresent ? 'HADIR' : 'ABSEN'];
-    });
-
-    doc.autoTable({
-      startY: 45,
-      head: [['No', 'ID', 'Nama Murid', 'Kelas', 'Status']],
-      body: tableData,
-      theme: 'striped',
-      headStyles: { fillColor: [79, 70, 229] }
-    });
-
-    doc.save(`Absensi-SM-${today}.pdf`);
-    setModalType(null);
-  };
-
-  if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-sans">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
-          <div className="bg-indigo-600 p-10 text-white text-center relative overflow-hidden">
-            <div className="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-            <div className="relative z-10">
-              <div className="bg-white/20 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm shadow-inner">
-                <Church size={40} />
-              </div>
-              <h1 className="text-3xl font-extrabold tracking-tight">Portal Absensi</h1>
-              <p className="mt-2 text-indigo-100 font-medium">GPdI Immanuel Pematangsiantar</p>
-            </div>
-          </div>
-          
-          <form onSubmit={handleLogin} className="p-8 space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 ml-1">Username</label>
-              <input 
-                type="text"
-                placeholder="SM2026"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                value={credentials.username}
-                onChange={(e) => setCredentials({...credentials, username: e.target.value})}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 ml-1">Password</label>
-              <input 
-                type="password"
-                placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                value={credentials.password}
-                onChange={(e) => setCredentials({...credentials, password: e.target.value})}
-              />
-            </div>
-            <button 
-              type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              Masuk Sekarang <LogOut size={18} />
-            </button>
-            <div className="text-center pt-2">
-              <p className="text-xs text-slate-400 font-medium italic">Gunakan Username: SM2026 / Pass: Imn2026</p>
-            </div>
-          </form>
-        </div>
-        {toast && (
-          <div className={`fixed bottom-8 px-6 py-3 rounded-full text-white shadow-xl ${toast.color} animate-bounce font-medium z-50`}>
-            {toast.message}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans pb-20">
-      {/* Navbar */}
-      <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center gap-3">
-              <div className="bg-indigo-600 p-2.5 rounded-xl text-white shadow-md shadow-indigo-100">
-                <Church size={24} />
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="text-xl font-bold text-slate-900 leading-none">GPdI Immanuel</h1>
-                <p className="text-[10px] text-slate-500 font-bold mt-1 tracking-[0.1em] uppercase">Sekolah Minggu Portal</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 sm:gap-4">
-              <button 
-                onClick={() => setModalType('manual')}
-                className="bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
-              >
-                <Keyboard size={18} className="text-indigo-600" /> <span className="hidden md:inline">Input Manual</span>
-              </button>
-              <button 
-                onClick={() => setModalType('report')}
-                className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
-              >
-                <Printer size={18} /> <span className="hidden md:inline">Cetak Laporan</span>
-              </button>
-              <button 
-                onClick={() => setIsLoggedIn(false)}
-                className="p-2.5 bg-slate-100 text-slate-500 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-              >
-                <LogOut size={20} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-[2rem] text-white shadow-xl shadow-indigo-100 relative overflow-hidden">
-            <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-white/10 rounded-full"></div>
-            <div className="flex justify-between items-start relative z-10">
-              <div>
-                <p className="text-indigo-100 text-sm font-medium">Hadir Hari Ini</p>
-                <h3 className="text-5xl font-black mt-2 tracking-tighter">{stats.present}</h3>
-              </div>
-              <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-sm">
-                <UserCheck size={28} />
-              </div>
-            </div>
-            <div className="mt-6 flex items-center gap-2 text-sm text-indigo-100 bg-white/10 w-fit px-3 py-1.5 rounded-full relative z-10">
-              <TrendingUp size={14} /> Total {stats.total} Murid
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col justify-between hover:border-indigo-100 transition-colors">
-            <div className="flex justify-between">
-              <div>
-                <p className="text-slate-500 text-sm font-medium">Persentase Kehadiran</p>
-                <h3 className="text-4xl font-bold mt-1 text-slate-900">{stats.percentage}%</h3>
-              </div>
-              <div className="bg-amber-100 text-amber-600 p-3 rounded-2xl">
-                <Award size={28} />
-              </div>
-            </div>
-            <div className="w-full bg-slate-100 h-3 rounded-full mt-4 overflow-hidden shadow-inner">
-              <div className="bg-amber-500 h-full rounded-full transition-all duration-1000" style={{ width: `${stats.percentage}%` }}></div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col justify-between hover:border-emerald-100 transition-colors">
-            <div className="flex justify-between">
-              <div>
-                <p className="text-slate-500 text-sm font-medium">Hari Kebaktian</p>
-                <h3 className="text-2xl font-bold mt-1 text-slate-900">
-                  {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}
-                </h3>
-              </div>
-              <div className="bg-emerald-100 text-emerald-600 p-3 rounded-2xl">
-                <Calendar size={28} />
-              </div>
-            </div>
-            <p className="text-sm text-slate-400 mt-2 italic font-medium">"Biarlah anak-anak itu datang kepada-Ku"</p>
-          </div>
-        </div>
-
-        {/* Filters and Search */}
-        <div className="flex flex-col md:flex-row gap-6 items-center justify-between mb-8">
-          <div className="flex bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm w-full md:w-auto overflow-x-auto no-scrollbar scroll-smooth">
-            {['Semua', 'Bintang', 'Cahaya', 'Pra Remaja'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-6 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
-                  activeTab === tab 
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
-                  : 'text-slate-500 hover:bg-slate-50'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text"
-              placeholder="Cari ID atau Nama Murid..."
-              className="w-full pl-12 pr-4 py-4 bg-white rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm transition-all text-sm font-medium"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Student Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredStudents.length > 0 ? (
-            filteredStudents.map((student) => {
-              const todayISO = new Date().toISOString().split('T')[0];
-              const isHadir = (attendanceRecords[student.id] || []).includes(todayISO);
-              return (
-                <div 
-                  key={student.id}
-                  className={`group bg-white rounded-[2rem] border-2 transition-all p-5 relative overflow-hidden ${
-                    isHadir ? 'border-emerald-500 ring-4 ring-emerald-50 shadow-emerald-50 shadow-lg' : 'border-slate-100 hover:border-indigo-200 hover:shadow-xl'
-                  }`}
-                >
-                  <div className="flex items-center gap-4 relative z-10">
-                    <div className={`w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center border shadow-inner ${
-                      isHadir ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100'
-                    }`}>
-                      {student.class === 'Bintang' ? 
-                        <Baby className={isHadir ? "text-emerald-500" : "text-amber-500"} /> : 
-                        <Smile className={isHadir ? "text-emerald-500" : "text-indigo-500"} />
-                      }
+    <div id="login-screen" class="min-h-screen flex items-center justify-center p-6">
+        <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 scale-in-center">
+            <div class="bg-indigo-600 p-10 text-white text-center relative overflow-hidden">
+                <div class="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+                <div class="relative z-10">
+                    <div class="bg-white/20 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm shadow-inner">
+                        <i data-lucide="church" class="w-10 h-10"></i>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-slate-900 truncate leading-tight group-hover:text-indigo-600 transition-colors">
-                        {student.name}
-                      </h4>
-                      <div className="flex items-center gap-2 mt-1">
-                         <span className="text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full uppercase">
-                           {student.id}
-                         </span>
-                         <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                         <span className="text-[10px] font-bold text-slate-400 uppercase">{student.class}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 flex gap-3 relative z-10">
-                    <button 
-                      disabled={isHadir}
-                      onClick={() => handleAbsensi(student.id)}
-                      className={`flex-1 py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${
-                        isHadir 
-                        ? 'bg-emerald-100 text-emerald-700 cursor-not-allowed' 
-                        : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white shadow-sm'
-                      }`}
-                    >
-                      {isHadir ? <CheckCircle2 size={18} /> : <Plus size={18} />}
-                      {isHadir ? 'Sudah Hadir' : 'Catat Absen'}
-                    </button>
-                  </div>
-
-                  {isHadir && (
-                    <div className="absolute -top-3 -right-3 bg-emerald-500 text-white p-2 rounded-full shadow-lg z-20 animate-in zoom-in duration-300">
-                      <CheckCircle2 size={18} />
-                    </div>
-                  )}
+                    <h1 class="text-3xl font-extrabold tracking-tight">Portal Absensi</h1>
+                    <p class="mt-2 text-indigo-100 font-medium">GPdI Immanuel Pematangsiantar</p>
                 </div>
-              );
-            })
-          ) : (
-            <div className="col-span-full py-20 flex flex-col items-center justify-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200">
-              <AlertCircle size={48} className="text-slate-300 mb-4" />
-              <p className="text-slate-500 font-bold">Murid tidak ditemukan</p>
-              <button 
-                onClick={() => {setSearchQuery(''); setActiveTab('Semua');}}
-                className="mt-4 text-indigo-600 font-bold hover:underline"
-              >
-                Reset Pencarian
-              </button>
             </div>
-          )}
-        </div>
-      </main>
-
-      {/* Manual Input Modal */}
-      {modalType === 'manual' && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl scale-in-center">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600">
-                  <Keyboard size={24} />
+            
+            <form id="login-form" class="p-8 space-y-6">
+                <div class="space-y-2">
+                    <label class="text-sm font-semibold text-slate-700 ml-1">Username</label>
+                    <input type="text" id="username" placeholder="SM2026" required
+                        class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900">Input Manual</h3>
-              </div>
-              <button onClick={() => setModalType(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"><X /></button>
-            </div>
-            <p className="text-slate-500 text-sm mb-6 leading-relaxed">
-              Ketikkan **ID Murid** (Contoh: IMN-001) atau **Nama Murid** untuk mencatat kehadiran dengan cepat.
-            </p>
-            <input 
-              autoFocus
-              type="text"
-              placeholder="Masukkan Nama atau ID..."
-              className="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-lg font-bold uppercase tracking-wide mb-6 transition-all"
-              value={manualInput}
-              onChange={(e) => setManualInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleManualAbsensi()}
-            />
-            <div className="flex gap-3">
-               <button 
-                onClick={() => setModalType(null)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-2xl transition-all"
-              >
-                Batal
-              </button>
-              <button 
-                onClick={handleManualAbsensi}
-                className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl transition-all shadow-xl shadow-indigo-100 active:scale-95"
-              >
-                Konfirmasi
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Report Modal */}
-      {modalType === 'report' && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl scale-in-center">
-            <div className="flex justify-between items-center mb-6">
-               <div className="flex items-center gap-3">
-                <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600">
-                  <Printer size={24} />
+                <div class="space-y-2">
+                    <label class="text-sm font-semibold text-slate-700 ml-1">Password</label>
+                    <input type="password" id="password" placeholder="••••••••" required
+                        class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900">Cetak Laporan</h3>
-              </div>
-              <button onClick={() => setModalType(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"><X /></button>
-            </div>
-            <div className="space-y-6">
-              <div>
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-2 ml-1">Nama Guru Pendamping</label>
-                <input 
-                  type="text"
-                  placeholder="Ketik nama Anda..."
-                  className="w-full px-4 py-3.5 rounded-xl border-2 border-slate-100 focus:border-indigo-500 outline-none font-bold"
-                  value={teacherName}
-                  onChange={(e) => setTeacherName(e.target.value)}
-                />
-              </div>
-              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                <div className="flex items-center gap-4">
-                  <div className="bg-white p-3 rounded-xl text-indigo-600 shadow-sm">
-                    <Calendar size={20} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter leading-none">Periode Laporan</p>
-                    <p className="text-sm font-bold text-slate-900 mt-1">Minggu, {new Date().toLocaleDateString('id-ID')}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="pt-2">
-                <button 
-                  onClick={downloadPDFReport}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-xl shadow-indigo-100 active:scale-95"
-                >
-                  <Printer size={20} /> Unduh File PDF
+                <button type="submit" 
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                    Masuk Sekarang <i data-lucide="log-in" class="w-5 h-5"></i>
                 </button>
-                <button 
-                  onClick={() => {
-                    if (window.confirm("Hapus semua riwayat absensi?")) {
-                      localStorage.removeItem('immanuel_attendance_v1');
-                      setAttendanceRecords({});
-                      showToast("Riwayat dihapus", "bg-rose-500");
-                      setModalType(null);
-                    }
-                  }}
-                  className="w-full mt-4 flex items-center justify-center gap-2 text-rose-400 hover:text-rose-600 text-xs font-bold transition-colors"
-                >
-                  <Trash2 size={14} /> Bersihkan Database Lokal
-                </button>
-              </div>
-            </div>
-          </div>
+            </form>
         </div>
-      )}
-
-      {/* Global Toast */}
-      {toast && (
-        <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] px-8 py-4 rounded-2xl text-white shadow-2xl font-bold flex items-center gap-4 animate-in fade-in slide-in-from-bottom-5 duration-300 ${toast.color}`}>
-          <div className="bg-white/20 p-2 rounded-xl shadow-inner"><CheckCircle2 size={20} /></div>
-          <span className="text-sm">{toast.message}</span>
-        </div>
-      )}
     </div>
-  );
-}
+
+    <div id="main-dashboard" class="hidden">
+        <nav class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-20">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-600 p-2.5 rounded-xl text-white shadow-md">
+                            <i data-lucide="church" class="w-6 h-6"></i>
+                        </div>
+                        <div class="hidden sm:block">
+                            <h1 class="text-xl font-bold text-slate-900 leading-none">GPdI Immanuel</h1>
+                            <p class="text-[10px] text-slate-500 font-bold mt-1 tracking-[0.1em] uppercase">Sekolah Minggu Portal</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 sm:gap-4">
+                        <button onclick="toggleModal('manual')" class="bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-all">
+                            <i data-lucide="keypad" class="w-4 h-4 text-indigo-600"></i> <span class="hidden md:inline">Kode Hadir</span>
+                        </button>
+                        <button onclick="toggleModal('report')" class="bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">
+                            <i data-lucide="file-text" class="w-4 h-4"></i> <span class="hidden md:inline">Laporan & KIA</span>
+                        </button>
+                        <button onclick="logout()" class="p-2.5 bg-slate-100 text-slate-500 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                            <i data-lucide="log-out" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-20">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div class="bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-[2rem] text-white shadow-xl">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-indigo-100 text-sm font-medium">Hadir Hari Ini</p>
+                            <h3 id="stat-present" class="text-5xl font-black mt-2 tracking-tighter">0</h3>
+                        </div>
+                        <div class="bg-white/20 p-3 rounded-2xl"><i data-lucide="user-check" class="w-7 h-7"></i></div>
+                    </div>
+                    <p class="mt-4 text-xs text-indigo-200 font-bold uppercase tracking-widest">Total <span id="stat-total">0</span> Murid</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <p class="text-slate-500 text-sm font-medium">Progress Kehadiran</p>
+                        <span id="stat-percent" class="text-indigo-600 font-bold">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden">
+                        <div id="stat-bar" class="bg-indigo-500 h-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                    <p class="mt-4 text-[11px] text-slate-400 font-medium italic">Data otomatis diperbarui.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col justify-center">
+                    <p class="text-slate-500 text-sm font-medium">Hari Kebaktian</p>
+                    <h3 id="current-date" class="text-xl font-bold mt-1 text-slate-900">-</h3>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-6 items-center justify-between mb-8">
+                <div id="class-tabs" class="flex bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto no-scrollbar w-full md:w-auto">
+                    <button onclick="filterClass('Semua')" class="tab-btn active px-6 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap bg-indigo-600 text-white shadow-lg">Semua</button>
+                    <button onclick="filterClass('Cahaya')" class="tab-btn px-6 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap text-slate-500">Cahaya</button>
+                    <button onclick="filterClass('Bintang')" class="tab-btn px-6 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap text-slate-500">Bintang</button>
+                    <button onclick="filterClass('Pra Remaja')" class="tab-btn px-6 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap text-slate-500">Pra Remaja</button>
+                </div>
+
+                <div class="relative w-full md:w-96">
+                    <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4.5 h-4.5"></i>
+                    <input type="text" id="search-input" placeholder="Cari ID atau Nama Murid..." oninput="handleSearch()"
+                        class="w-full pl-12 pr-4 py-4 bg-white rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm transition-all text-sm font-medium">
+                </div>
+            </div>
+
+            <div id="student-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Data murid akan dirender di sini via JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Input Manual -->
+    <div id="modal-manual" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl scale-in-center">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-slate-900">Input Kode Hadir</h3>
+                <button onclick="toggleModal('manual')" class="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            <input type="text" id="manual-input" placeholder="Contoh: IMN-001" 
+                class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 outline-none text-lg font-bold uppercase mb-6">
+            <button onclick="submitManual()" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-xl">Konfirmasi Hadir</button>
+        </div>
+    </div>
+
+    <!-- Modal Laporan -->
+    <div id="modal-report" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-lg p-8 shadow-2xl scale-in-center max-h-[90vh] overflow-y-auto no-scrollbar">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-slate-900">Laporan & KIA Massal</h3>
+                <button onclick="toggleModal('report')" class="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div class="space-y-6">
+                <div class="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                    <h4 class="text-sm font-black text-indigo-600 uppercase tracking-widest mb-4">Laporan Absensi</h4>
+                    <div class="space-y-4">
+                        <input type="text" id="teacher-name" placeholder="Nama Guru..." class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none font-bold text-sm">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="downloadPDF('Cahaya')" class="bg-white text-slate-700 font-bold py-2.5 rounded-xl border border-slate-200 text-xs">Absen Cahaya</button>
+                            <button onclick="downloadPDF('Bintang')" class="bg-white text-slate-700 font-bold py-2.5 rounded-xl border border-slate-200 text-xs">Absen Bintang</button>
+                            <button onclick="downloadPDF('Pra Remaja')" class="bg-white text-slate-700 font-bold py-2.5 rounded-xl border border-slate-200 text-xs">Absen Pra Remaja</button>
+                            <button onclick="downloadPDF('Semua')" class="bg-indigo-600 text-white font-bold py-2.5 rounded-xl shadow-md text-xs">Semua Absen</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100">
+                    <h4 class="text-sm font-black text-indigo-600 uppercase tracking-widest mb-4">Cetak KIA Massal</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="downloadBatchKIA('Cahaya')" class="bg-amber-500 text-white font-bold py-3 rounded-xl text-xs">KIA Cahaya</button>
+                        <button onclick="downloadBatchKIA('Bintang')" class="bg-blue-500 text-white font-bold py-3 rounded-xl text-xs">KIA Bintang</button>
+                        <button onclick="downloadBatchKIA('Pra Remaja')" class="bg-purple-500 text-white font-bold py-3 rounded-xl text-xs">KIA Pra Remaja</button>
+                        <button onclick="downloadBatchKIA('Semua')" class="bg-slate-900 text-white font-bold py-3 rounded-xl text-xs">Semua KIA</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="photo-upload" class="hidden" accept="image/*" onchange="handlePhotoFile(event)">
+    <div id="toast" class="hidden fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] px-8 py-4 rounded-2xl text-white shadow-2xl font-bold transition-all"></div>
+
+    <script>
+        const STUDENTS = [
+            { id: "IMN-001", name: "Eldo Desenta Purba", age: 9, school: "3 SD", class: "Cahaya" },
+            { id: "IMN-002", name: "Fahlepta Surbakti", age: 9, school: "3 SD", class: "Cahaya" },
+            { id: "IMN-003", name: "Lexi Felicia", age: 12, school: "6 SD", class: "Cahaya" },
+            { id: "IMN-004", name: "Velizio Sitepu", age: 8, school: "3 SD", class: "Cahaya" },
+            { id: "IMN-005", name: "Sergius Silalahi", age: 10, school: "4 SD", class: "Cahaya" },
+            { id: "IMN-006", name: "Gabriel Ginting", age: 11, school: "4 SD", class: "Cahaya" },
+            { id: "IMN-007", name: "Ria Silalahi", age: 12, school: "5 SD", class: "Cahaya" },
+            { id: "IMN-008", name: "Elsa Purba", age: 11, school: "5 SD", class: "Cahaya" },
+            { id: "IMN-009", name: "Enola", age: 11, school: "5 SD", class: "Cahaya" },
+            { id: "IMN-010", name: "Adelia Sibarani", age: 11, school: "5 SD", class: "Cahaya" },
+            { id: "IMN-011", name: "Aurel Barus", age: 11, school: "5 SD", class: "Cahaya" },
+            { id: "IMN-012", name: "Charlotte Sitanggang", age: 11, school: "6 SD", class: "Cahaya" },
+            { id: "IMN-013", name: "Vanesa Br Ginting", age: 12, school: "6 SD", class: "Cahaya" },
+            { id: "IMN-014", name: "Evelin Br Ginting", age: 9, school: "3 SD", class: "Cahaya" },
+            { id: "IMN-015", name: "Alvina Gabriella", age: 9, school: "3 SD", class: "Cahaya" },
+            { id: "IMN-016", name: "Kirel Adrelia Sibero", age: 9, school: "3 SD", class: "Cahaya" },
+            { id: "IMN-017", name: "Ema Br Sinaga", age: 10, school: "4 SD", class: "Cahaya" },
+            { id: "IMN-018", name: "Okto Zendate", age: 12, school: "6 SD", class: "Cahaya" },
+            { id: "IMN-019", name: "Adel Esterina Br Sinuraya", age: 11, school: "6 SD", class: "Cahaya" },
+            { id: "IMN-020", name: "Cristina Oktaviani Br Tarigan", age: 11, school: "5 SD", class: "Cahaya" },
+            { id: "IMN-021", name: "Keren Eklesia Br Ginting", age: 11, school: "5 SD", class: "Cahaya" },
+            { id: "IMN-022", name: "Edgard Sharos Simbolon", age: 10, school: "4 SD", class: "Cahaya" },
+            { id: "IMN-023", name: "Marzelo Geofrey", age: 12, school: "6 SD", class: "Cahaya" },
+            { id: "IMN-024", name: "Adriel Tarigan", age: 10, school: "3 SD", class: "Cahaya" },
+            { id: "IMN-0001", name: "Yafet Andreas Brahmana", age: 8, school: "2 SD", class: "Bintang" },
+            { id: "IMN-0002", name: "Yesril Elvano Ginting", age: 8, school: "2 SD", class: "Bintang" },
+            { id: "IMN-0003", name: "Yoel Ginting", age: 8, school: "2 SD", class: "Bintang" },
+            { id: "IMN-0004", name: "Giles Hagai Karo Karo", age: 8, school: "2 SD", class: "Bintang" },
+            { id: "IMN-0005", name: "Fahlef Surbakti", age: 9, school: "3 SD", class: "Bintang" },
+            { id: "IMN-0007", name: "Maria Sibarani", age: 8, school: "1 SD", class: "Bintang" },
+            { id: "IMN-0008", name: "Helda Sibarani", age: 6, school: "TK", class: "Bintang" },
+            { id: "IMN-0009", name: "Velika Adriella Br Sitepu", age: 4, school: "Belum Sekolah", class: "Bintang" },
+            { id: "IMN-0010", name: "Gareth Dnoel Sombolon", age: 7, school: "1 SD", class: "Bintang" },
+            { id: "IMN-0011", name: "Rafa Sinaga", age: 8, school: "1 SD", class: "Bintang" },
+            { id: "IMN-0012", name: "Tesalonika Sinaga", age: 3, school: "Belum Sekolah", class: "Bintang" },
+            { id: "IMN-0013", name: "Desen Purba", age: 9, school: "3 SD", class: "Bintang" },
+            { id: "IMN-0014", name: "Elyora Purba", age: 4, school: "Belum Sekolah", class: "Bintang" },
+            { id: "IMN-0015", name: "Elzira Br Ginting", age: 8, school: "2 SD", class: "Bintang" },
+            { id: "IMN-0016", name: "Jesen Sitepu", age: 2, school: "Belum Sekolah", class: "Bintang" },
+            { id: "IMN-0017", name: "Aksel Natan Silalahi", age: 6, school: "TK", class: "Bintang" },
+            { id: "IMN-0018", name: "Hesen Sitepu", age: 7, school: "1 SD", class: "Bintang" },
+            { id: "IMN-0019", name: "Ilona Siahaan", age: 1, school: "Belum Sekolah", class: "Bintang" },
+            { id: "IMN-0020", name: "Jediarga Ginting (Jeje)", age: 5, school: "Belum Sekolah", class: "Bintang" },
+            { id: "IMN-0021", name: "Alvito Lubis", age: 6, school: "TK", class: "Bintang" },
+            { id: "IMN-0022", name: "Dea Elnora Br purba", age: 8, school: "2 SD", class: "Bintang" },
+            { id: "IMN-0023", name: "Jesifa Acira Fayona", age: 8, school: "1 SD", class: "Bintang" },
+            { id: "IMN-0024", name: "Kavya Miracle Joe", age: 7, school: "TK", class: "Bintang" },
+            { id: "IMN-0025", name: "Zivya Miracle Joe", age: 7, school: "TK", class: "Bintang" },
+            { id: "IMN-0026", name: "Clairine Misella Br Ginting", age: 6, school: "TK", class: "Bintang" },
+            { id: "IMN-0027", name: "Gloria Cantika Br Simanjorang", age: 6, school: "TK", class: "Bintang" },
+            { id: "IMN-0028", name: "Diva Bintang", age: 6, school: "TK", class: "Bintang" },
+            { id: "IMN-0029", name: "Mika Ulisinar Sihite", age: 10, school: "3 SD", class: "Bintang" },
+            { id: "IMN-0030", name: "Aurelia Br Tarigan", age: 6, school: "TK", class: "Bintang" },
+            { id: "IMN-0031", name: "Joe Rapha Ginting", age: 1, school: "Belum Sekolah", class: "Bintang" },
+            { id: "IMN-0032", name: "Chasia Queensa Br Ginting", age: 6, school: "Belum Sekolah", class: "Bintang" },
+            { id: "IMN-0033", name: "Axel Kenneth Ginting", age: 3, school: "Belum Sekolah", class: "Bintang" },
+            { id: "IMN-0034", name: "Revanya Abigail Br Surbakti", age: 9, school: "2 SD", class: "Bintang" },
+            { id: "IMN-0035", name: "Thiago Ginting", age: 5, school: "Belum Sekolah", class: "Bintang" },
+            { id: "IMN-0040", name: "Cristiano de Caprio", age: 13, school: "-", class: "Pra Remaja" },
+            { id: "IMN-0041", name: "Risky Tuahta Bangun", age: 15, school: "-", class: "Pra Remaja" },
+            { id: "IMN-0042", name: "Yonatan Ceristian Sitepu", age: 13, school: "-", class: "Pra Remaja" },
+            { id: "IMN-0043", name: "Calvien Aldiano Sagala", age: 12, school: "-", class: "Pra Remaja" },
+            { id: "IMN-0044", name: "Mario Ramah Suka Purba", age: 15, school: "-", class: "Pra Remaja" },
+            { id: "IMN-0045", name: "Rafael", age: 14, school: "-", class: "Pra Remaja" },
+            { id: "IMN-0046", name: "Griselda Fidelis Br Tarigan", age: 13, school: "-", class: "Pra Remaja" },
+            { id: "IMN-0047", name: "Mila Febriani Br Silalahi", age: 14, school: "-", class: "Pra Remaja" },
+            { id: "IMN-0048", name: "Nadine Izura Kinata Kembaren", age: 14, school: "-", class: "Pra Remaja" },
+            { id: "IMN-0049", name: "Nasya Ekklesia Mendrofa", age: 13, school: "-", class: "Pra Remaja" },
+            { id: "IMN-0050", name: "Nachelle Olivia Sitanggang", age: 13, school: "-", class: "Pra Remaja" },
+            { id: "IMN-0051", name: "Heppi Muliahati Silalahi", age: 13, school: "-", class: "Pra Remaja" }
+        ];
+
+        let attendance = JSON.parse(localStorage.getItem('attendance_immanuel_v2')) || {};
+        let studentPhotos = JSON.parse(localStorage.getItem('student_photos_immanuel')) || {};
+        let currentClass = 'Semua';
+        let searchQuery = '';
+        let targetPhotoId = null;
+
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            
+            if(user === 'SM2026' && pass === 'Imn2026') {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('main-dashboard').classList.remove('hidden');
+                initApp();
+            } else {
+                showToast("Login Gagal!", "bg-rose-600");
+            }
+        });
+
+        function initApp() {
+            lucide.createIcons();
+            const date = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date').innerText = date.toLocaleDateString('id-ID', options);
+            updateStats();
+            renderStudents();
+        }
+
+        function renderStudents() {
+            const grid = document.getElementById('student-grid');
+            const today = new Date().toISOString().split('T')[0];
+            grid.innerHTML = '';
+
+            const filtered = STUDENTS.filter(s => {
+                const mTab = currentClass === 'Semua' || s.class === currentClass;
+                const mSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.id.toLowerCase().includes(searchQuery.toLowerCase());
+                return mTab && mSearch;
+            });
+
+            filtered.forEach(s => {
+                const isHadir = (attendance[s.id] || []).includes(today);
+                const photo = studentPhotos[s.id] || `https://placehold.co/150x150/6366f1/ffffff?text=${s.name.charAt(0)}`;
+                
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-[2rem] border-2 transition-all p-5 shadow-sm hover:shadow-md ${isHadir ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-100'}`;
+                
+                card.innerHTML = `
+                    <div class="flex flex-col gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="relative">
+                                <img src="${photo}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-100">
+                                <button onclick="triggerPhoto('${s.id}')" class="absolute -bottom-1 -right-1 bg-white p-1 rounded-full shadow-md text-indigo-600 hover:scale-110">
+                                    <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-bold text-slate-900 truncate">${s.name}</h4>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase">${s.id} • ${s.class}</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="handleAbsen('${s.id}')" ${isHadir ? 'disabled' : ''} class="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${isHadir ? 'bg-emerald-500 text-white shadow-lg' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white'}">
+                                <i data-lucide="${isHadir ? 'check-circle' : 'plus-circle'}" class="w-4 h-4"></i>
+                                ${isHadir ? 'Hadir' : 'Absen'}
+                            </button>
+                            <button onclick="generateIDCard('${s.id}')" class="py-2.5 rounded-xl text-xs font-bold bg-slate-50 text-slate-600 border border-slate-200">KIA</button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        function handleAbsen(id) {
+            const today = new Date().toISOString().split('T')[0];
+            if (!attendance[id]) attendance[id] = [];
+            if (!attendance[id].includes(today)) {
+                attendance[id].push(today);
+                localStorage.setItem('attendance_immanuel_v2', JSON.stringify(attendance));
+                renderStudents();
+                updateStats();
+                showToast(`Absensi dicatat: ${id}`, "bg-emerald-600");
+                
+                if ('speechSynthesis' in window) {
+                    const student = STUDENTS.find(x => x.id === id);
+                    const msg = new SpeechSynthesisUtterance(`Selamat datang ${student.name}`);
+                    msg.lang = 'id-ID';
+                    window.speechSynthesis.speak(msg);
+                }
+            }
+        }
+
+        function updateStats() {
+            const today = new Date().toISOString().split('T')[0];
+            const present = Object.values(attendance).filter(d => d.includes(today)).length;
+            const total = STUDENTS.length;
+            const percent = Math.round((present / total) * 100) || 0;
+
+            document.getElementById('stat-present').innerText = present;
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-percent').innerText = percent + '%';
+            document.getElementById('stat-bar').style.width = percent + '%';
+        }
+
+        function triggerPhoto(id) {
+            targetPhotoId = id;
+            document.getElementById('photo-upload').click();
+        }
+
+        function handlePhotoFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                studentPhotos[targetPhotoId] = event.target.result;
+                localStorage.setItem('student_photos_immanuel', JSON.stringify(studentPhotos));
+                renderStudents();
+                showToast("Foto diperbarui", "bg-emerald-500");
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function toggleModal(id) {
+            document.getElementById(`modal-${id}`).classList.toggle('hidden');
+        }
+
+        function filterClass(cls) {
+            currentClass = cls;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-6 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap text-slate-500";
+                if(btn.innerText === cls) {
+                    btn.className = "tab-btn active px-6 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap bg-indigo-600 text-white shadow-lg";
+                }
+            });
+            renderStudents();
+        }
+
+        function handleSearch() {
+            searchQuery = document.getElementById('search-input').value;
+            renderStudents();
+        }
+
+        function showToast(msg, color) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.className = `fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] px-8 py-4 rounded-2xl text-white shadow-2xl font-bold transition-all ${color}`;
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 3000);
+        }
+
+        function generateIDCard(id) {
+            const s = STUDENTS.find(x => x.id === id);
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 54] });
+            
+            doc.setFillColor(79, 70, 229);
+            doc.rect(0, 0, 85.6, 54, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(10);
+            doc.text("GPdI IMMANUEL", 42.8, 8, { align: 'center' });
+            
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(5, 15, 75.6, 34, 3, 3, 'F');
+            
+            const imgData = studentPhotos[s.id];
+            if(imgData) doc.addImage(imgData, 'JPEG', 10, 18, 20, 25);
+            
+            doc.setTextColor(30, 30, 30);
+            doc.setFontSize(8);
+            doc.text(s.name.toUpperCase(), 35, 24);
+            doc.text(`ID: ${s.id}`, 35, 30);
+            doc.text(`KELAS: ${s.class}`, 35, 34);
+            
+            doc.save(`KIA-${s.id}.pdf`);
+        }
+
+        function downloadPDF(cls) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const teacher = document.getElementById('teacher-name').value || 'Guru';
+            const todayISO = new Date().toISOString().split('T')[0];
+
+            let dataList = (cls === 'Semua') ? STUDENTS : STUDENTS.filter(s => s.class === cls);
+
+            doc.text("LAPORAN ABSENSI", 105, 20, { align: 'center' });
+            doc.autoTable({
+                startY: 40,
+                head: [['No', 'ID', 'Nama', 'Kelas', 'Status']],
+                body: dataList.map((s, i) => [i+1, s.id, s.name, s.class, (attendance[s.id]||[]).includes(todayISO) ? 'HADIR' : '-'])
+            });
+            doc.save(`Absen-${cls}.pdf`);
+        }
+
+        function downloadBatchKIA(cls) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 54] });
+            let dataList = (cls === 'Semua') ? STUDENTS : STUDENTS.filter(s => s.class === cls);
+
+            dataList.forEach((s, i) => {
+                if (i > 0) doc.addPage([85.6, 54], 'landscape');
+                doc.setFillColor(79, 70, 229); doc.rect(0, 0, 85.6, 54, 'F');
+                doc.setFillColor(255, 255, 255); doc.roundedRect(5, 15, 75.6, 34, 3, 3, 'F');
+                doc.setTextColor(255, 255, 255); doc.text("GPdI IMMANUEL", 42.8, 8, { align: 'center' });
+                doc.setTextColor(30, 30, 30); doc.text(s.name.toUpperCase().substring(0, 25), 32, 24);
+                doc.setFontSize(6); doc.text(`ID: ${s.id} | ${s.class}`, 32, 30);
+            });
+            doc.save(`KIA-Batch-${cls}.pdf`);
+        }
+
+        function logout() { window.location.reload(); }
+        function submitManual() {
+            const val = document.getElementById('manual-input').value.toUpperCase();
+            const s = STUDENTS.find(x => x.id === val);
+            if(s) { handleAbsen(s.id); toggleModal('manual'); }
+            else showToast("ID Tidak Ditemukan", "bg-rose-500");
+        }
+    </script>
+</body>
+</html>
