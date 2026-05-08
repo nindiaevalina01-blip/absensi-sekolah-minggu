@@ -368,6 +368,7 @@
                             <div class="flex-1 min-w-0">
                                 <h4 class="font-bold text-slate-900 truncate">${s.name}</h4>
                                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${s.id} • ${s.class}</p>
+                                <p class="text-[11px] text-indigo-600 font-semibold mt-0.5">${s.age} Tahun • ${s.school}</p>
                                 <div class="flex items-center gap-2 mt-1">
                                     <span class="bg-indigo-100 text-indigo-700 text-[9px] px-2 py-0.5 rounded-full font-black">
                                         TOTAL HADIR: ${totalHadir}
@@ -532,14 +533,19 @@
             doc.text(`: ${s.id}`, 48, 28);
             
             doc.setTextColor(100);
-            doc.text(`Usia / Hadir`, 32, 32);
+            doc.text(`Usia`, 32, 32);
             doc.setTextColor(50);
-            doc.text(`: ${s.age} Thn / ${getCombinedAttendance(s.id).length}x`, 48, 32);
+            doc.text(`: ${s.age} Tahun`, 48, 32);
             
             doc.setTextColor(100);
             doc.text(`Pendidikan`, 32, 36);
             doc.setTextColor(50);
             doc.text(`: ${s.school}`, 48, 36);
+
+            doc.setTextColor(100);
+            doc.text(`Total Hadir`, 32, 40);
+            doc.setTextColor(50);
+            doc.text(`: ${getCombinedAttendance(s.id).length} Kali`, 48, 40);
 
             doc.setFontSize(5);
             doc.setTextColor(150);
@@ -549,27 +555,72 @@
         function downloadPDF(cls) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            const teacher = document.getElementById('teacher-name').value || 'Guru Pembimbing';
+            const teacher = document.getElementById('teacher-name').value || '(________________)';
             const todayISO = new Date().toISOString().split('T')[0];
+            const todayStr = new Date().toLocaleDateString('id-ID', { 
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric' 
+            });
             const dataList = (cls === 'Semua') ? STUDENTS : STUDENTS.filter(s => s.class === cls);
 
+            // Judul Utama
+            doc.setFont("helvetica", "bold");
             doc.setFontSize(16);
-            doc.text("LAPORAN ABSENSI SEKOLAH MINGGU", 105, 20, { align: 'center' });
+            doc.text("LAPORAN KEHADIRAN SEKOLAH MINGGU", 105, 20, { align: 'center' });
+            
+            // Sub-header (Nama Gereja & Kelas)
+            doc.setFontSize(14);
+            doc.text("GPdI Immanuel Berastagi", 105, 28, { align: 'center' });
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "italic");
+            doc.text(`Kelas: ${cls === 'Semua' ? 'Seluruh Kelas' : cls}`, 105, 35, { align: 'center' });
+            
+            // Tanggal Cetak
+            doc.setFont("helvetica", "normal");
             doc.setFontSize(10);
-            doc.text(`Kelas: ${cls} | Guru: ${teacher}`, 20, 35);
+            doc.text(`Tanggal Cetak: ${todayStr}`, 14, 45);
 
             doc.autoTable({
-                startY: 45,
+                startY: 50,
                 head: [['No', 'ID', 'Nama Murid', 'Usia', 'Total Hadir', 'Status Hari Ini']],
                 body: dataList.map((s, i) => [
-                    i+1, s.id, s.name, s.age, 
-                    getCombinedAttendance(s.id).length + ' kali',
+                    i+1, 
+                    s.id, 
+                    s.name, 
+                    s.age + ' Thn', 
+                    getCombinedAttendance(s.id).length + ' Kali',
                     getCombinedAttendance(s.id).includes(todayISO) ? 'HADIR' : '-'
                 ]),
                 theme: 'striped',
-                headStyles: { fillColor: [79, 70, 229] }
+                headStyles: { fillColor: [79, 70, 229], halign: 'center' },
+                columnStyles: {
+                    0: { halign: 'center' },
+                    1: { halign: 'center' },
+                    3: { halign: 'center' },
+                    4: { halign: 'center' },
+                    5: { halign: 'center', fontStyle: 'bold' }
+                }
             });
-            doc.save(`Absensi-${cls}.pdf`);
+
+            // Menentukan posisi Y setelah tabel selesai
+            const finalY = doc.lastAutoTable.finalY + 20;
+            const rightColumnX = 140;
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(11);
+            doc.text("Mengetahui,", rightColumnX, finalY);
+            doc.text("Guru Sekolah Minggu,", rightColumnX, finalY + 7);
+            
+            // Nama Guru (Inputan)
+            doc.setFont("helvetica", "bold");
+            doc.text(teacher, rightColumnX, finalY + 30);
+            
+            // Garis bawah untuk nama guru
+            const textWidth = doc.getTextWidth(teacher);
+            doc.line(rightColumnX, finalY + 31, rightColumnX + textWidth, finalY + 31);
+
+            doc.save(`Laporan_Absensi_${cls}_${todayISO}.pdf`);
         }
 
         function downloadBatchKIA(cls) {
