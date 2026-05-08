@@ -19,7 +19,6 @@
             0% { transform: scale(0); opacity: 1; }
             100% { transform: scale(1); opacity: 1; }
         }
-        .id-card-bg { background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen">
@@ -70,13 +69,22 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2 sm:gap-4">
-                        <button onclick="toggleModal('manual')" class="bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-all">
-                            <i data-lucide="keypad" class="w-4 h-4 text-indigo-600"></i> <span class="hidden md:inline">Kode Hadir</span>
+                    <div class="flex items-center gap-2 sm:gap-3">
+                        <!-- Tombol Kode Hadir -->
+                        <button onclick="toggleModal('manual')" class="bg-white border border-slate-200 text-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition-all">
+                            <i data-lucide="keypad" class="w-4 h-4 text-indigo-600"></i> <span class="hidden lg:inline">Kode Hadir</span>
                         </button>
-                        <button onclick="toggleModal('report')" class="bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">
-                            <i data-lucide="file-text" class="w-4 h-4"></i> <span class="hidden md:inline">Laporan & KIA</span>
+                        
+                        <!-- Tombol Laporan (Sekarang Hanya Laporan) -->
+                        <button onclick="toggleModal('report')" class="bg-white border border-slate-200 text-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition-all">
+                            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i> <span class="hidden lg:inline">Laporan Kehadiran</span>
                         </button>
+
+                        <!-- TOMBOL CETAK KIA BARU -->
+                        <button onclick="toggleModal('kia-massal')" class="bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">
+                            <i data-lucide="contact-2" class="w-4 h-4"></i> <span>Cetak KIA</span>
+                        </button>
+
                         <button onclick="logout()" class="p-2.5 bg-slate-100 text-slate-500 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
                             <i data-lucide="log-out" class="w-5 h-5"></i>
                         </button>
@@ -86,6 +94,7 @@
         </nav>
 
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-20">
+            <!-- Stats -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
                 <div class="bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-[2rem] text-white shadow-xl">
                     <div class="flex justify-between items-start">
@@ -115,6 +124,7 @@
                 </div>
             </div>
 
+            <!-- Filters -->
             <div class="flex flex-col md:flex-row gap-6 items-center justify-between mb-8">
                 <div id="class-tabs" class="flex bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto no-scrollbar w-full md:w-auto">
                     <button onclick="filterClass('Semua')" class="tab-btn active px-6 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap bg-indigo-600 text-white shadow-lg">Semua</button>
@@ -130,10 +140,68 @@
                 </div>
             </div>
 
+            <!-- Grid -->
             <div id="student-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <!-- Data murid akan dirender di sini via JS -->
+                <!-- Students render here -->
             </div>
         </main>
+    </div>
+
+    <!-- Modal Laporan Kehadiran -->
+    <div id="modal-report" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl scale-in-center">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black text-slate-900">Cetak Laporan</h3>
+                <button onclick="toggleModal('report')" class="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            <div class="space-y-4">
+                <label class="text-xs font-bold text-slate-500 uppercase">Nama Guru Sekolah Minggu</label>
+                <input type="text" id="teacher-name" placeholder="Ketik nama di sini..." 
+                    class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-slate-50">
+                
+                <div class="grid grid-cols-1 gap-2 pt-2">
+                    <button onclick="downloadPDF('Cahaya')" class="w-full text-left bg-white text-slate-700 font-bold py-4 px-5 rounded-2xl border border-slate-200 text-sm hover:bg-indigo-50 transition-colors flex justify-between">
+                        Kelas Cahaya <i data-lucide="chevron-right" class="w-5 h-5 text-indigo-400"></i>
+                    </button>
+                    <button onclick="downloadPDF('Bintang')" class="w-full text-left bg-white text-slate-700 font-bold py-4 px-5 rounded-2xl border border-slate-200 text-sm hover:bg-indigo-50 transition-colors flex justify-between">
+                        Kelas Bintang <i data-lucide="chevron-right" class="w-5 h-5 text-indigo-400"></i>
+                    </button>
+                    <button onclick="downloadPDF('Pra Remaja')" class="w-full text-left bg-white text-slate-700 font-bold py-4 px-5 rounded-2xl border border-slate-200 text-sm hover:bg-indigo-50 transition-colors flex justify-between">
+                        Kelas Pra Remaja <i data-lucide="chevron-right" class="w-5 h-5 text-indigo-400"></i>
+                    </button>
+                    <button onclick="downloadPDF('Semua')" class="mt-2 w-full bg-indigo-600 text-white font-bold py-4 px-5 rounded-2xl shadow-xl shadow-indigo-100 text-sm flex items-center justify-center gap-2">
+                        <i data-lucide="download" class="w-5 h-5"></i> Cetak Seluruh Absensi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cetak KIA Massal -->
+    <div id="modal-kia-massal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl scale-in-center">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black text-slate-900">Cetak KIA</h3>
+                <button onclick="toggleModal('kia-massal')" class="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            <div class="space-y-3">
+                <p class="text-xs text-slate-500 font-medium mb-4">Pilih kelas untuk mengunduh Kartu Identitas Anak dalam format PDF.</p>
+                <button onclick="downloadBatchKIA('Cahaya')" class="w-full bg-slate-50 text-indigo-700 font-bold py-4 px-5 rounded-2xl border border-indigo-100 text-sm hover:bg-indigo-600 hover:text-white transition-all flex justify-between">
+                    KIA Kelas Cahaya <i data-lucide="printer" class="w-5 h-5"></i>
+                </button>
+                <button onclick="downloadBatchKIA('Bintang')" class="w-full bg-slate-50 text-indigo-700 font-bold py-4 px-5 rounded-2xl border border-indigo-100 text-sm hover:bg-indigo-600 hover:text-white transition-all flex justify-between">
+                    KIA Kelas Bintang <i data-lucide="printer" class="w-5 h-5"></i>
+                </button>
+                <button onclick="downloadBatchKIA('Pra Remaja')" class="w-full bg-slate-50 text-indigo-700 font-bold py-4 px-5 rounded-2xl border border-indigo-100 text-sm hover:bg-indigo-600 hover:text-white transition-all flex justify-between">
+                    KIA Kelas Pra Remaja <i data-lucide="printer" class="w-5 h-5"></i>
+                </button>
+                <div class="pt-4">
+                    <button onclick="downloadBatchKIA('Semua')" class="w-full bg-slate-900 text-white font-bold py-5 px-5 rounded-2xl shadow-2xl text-sm flex items-center justify-center gap-3">
+                        <i data-lucide="layers" class="w-5 h-5"></i> CETAK SEMUA KIA (PDF)
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal Input Manual -->
@@ -149,46 +217,12 @@
         </div>
     </div>
 
-    <!-- Modal Laporan -->
-    <div id="modal-report" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
-        <div class="bg-white rounded-[2.5rem] w-full max-w-lg p-8 shadow-2xl scale-in-center max-h-[90vh] overflow-y-auto no-scrollbar">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-bold text-slate-900">Laporan & KIA Massal</h3>
-                <button onclick="toggleModal('report')" class="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
-            </div>
-            
-            <div class="space-y-6">
-                <div class="p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                    <h4 class="text-sm font-black text-indigo-600 uppercase tracking-widest mb-4">Laporan Absensi</h4>
-                    <div class="space-y-4">
-                        <input type="text" id="teacher-name" placeholder="Nama Guru..." class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none font-bold text-sm">
-                        <div class="grid grid-cols-2 gap-2">
-                            <button onclick="downloadPDF('Cahaya')" class="bg-white text-slate-700 font-bold py-2.5 rounded-xl border border-slate-200 text-xs">Absen Cahaya</button>
-                            <button onclick="downloadPDF('Bintang')" class="bg-white text-slate-700 font-bold py-2.5 rounded-xl border border-slate-200 text-xs">Absen Bintang</button>
-                            <button onclick="downloadPDF('Pra Remaja')" class="bg-white text-slate-700 font-bold py-2.5 rounded-xl border border-slate-200 text-xs">Absen Pra Remaja</button>
-                            <button onclick="downloadPDF('Semua')" class="bg-indigo-600 text-white font-bold py-2.5 rounded-xl shadow-md text-xs">Semua Absen</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100">
-                    <h4 class="text-sm font-black text-indigo-600 uppercase tracking-widest mb-4">Cetak KIA Massal</h4>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="downloadBatchKIA('Cahaya')" class="bg-amber-500 text-white font-bold py-3 rounded-xl text-xs">KIA Cahaya</button>
-                        <button onclick="downloadBatchKIA('Bintang')" class="bg-blue-500 text-white font-bold py-3 rounded-xl text-xs">KIA Bintang</button>
-                        <button onclick="downloadBatchKIA('Pra Remaja')" class="bg-purple-500 text-white font-bold py-3 rounded-xl text-xs">KIA Pra Remaja</button>
-                        <button onclick="downloadBatchKIA('Semua')" class="bg-slate-900 text-white font-bold py-3 rounded-xl text-xs">Semua KIA</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <input type="file" id="photo-upload" class="hidden" accept="image/*" onchange="handlePhotoFile(event)">
     <div id="toast" class="hidden fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] px-8 py-4 rounded-2xl text-white shadow-2xl font-bold transition-all"></div>
 
     <script>
         const STUDENTS = [
+            // KELAS CAHAYA
             { id: "IMN-001", name: "Eldo Desenta Purba", age: 9, school: "3 SD", class: "Cahaya" },
             { id: "IMN-002", name: "Fahlepta Surbakti", age: 9, school: "3 SD", class: "Cahaya" },
             { id: "IMN-003", name: "Lexi Felicia", age: 12, school: "6 SD", class: "Cahaya" },
@@ -213,6 +247,7 @@
             { id: "IMN-022", name: "Edgard Sharos Simbolon", age: 10, school: "4 SD", class: "Cahaya" },
             { id: "IMN-023", name: "Marzelo Geofrey", age: 12, school: "6 SD", class: "Cahaya" },
             { id: "IMN-024", name: "Adriel Tarigan", age: 10, school: "3 SD", class: "Cahaya" },
+            // KELAS BINTANG
             { id: "IMN-0001", name: "Yafet Andreas Brahmana", age: 8, school: "2 SD", class: "Bintang" },
             { id: "IMN-0002", name: "Yesril Elvano Ginting", age: 8, school: "2 SD", class: "Bintang" },
             { id: "IMN-0003", name: "Yoel Ginting", age: 8, school: "2 SD", class: "Bintang" },
@@ -231,7 +266,7 @@
             { id: "IMN-0017", name: "Aksel Natan Silalahi", age: 6, school: "TK", class: "Bintang" },
             { id: "IMN-0018", name: "Hesen Sitepu", age: 7, school: "1 SD", class: "Bintang" },
             { id: "IMN-0019", name: "Ilona Siahaan", age: 1, school: "Belum Sekolah", class: "Bintang" },
-            { id: "IMN-0020", name: "Jediarga Ginting (Jeje)", age: 5, school: "Belum Sekolah", class: "Bintang" },
+            { id: "IMN-0020", name: "Jediarga Ginting", age: 5, school: "Belum Sekolah", class: "Bintang" },
             { id: "IMN-0021", name: "Alvito Lubis", age: 6, school: "TK", class: "Bintang" },
             { id: "IMN-0022", name: "Dea Elnora Br purba", age: 8, school: "2 SD", class: "Bintang" },
             { id: "IMN-0023", name: "Jesifa Acira Fayona", age: 8, school: "1 SD", class: "Bintang" },
@@ -247,18 +282,19 @@
             { id: "IMN-0033", name: "Axel Kenneth Ginting", age: 3, school: "Belum Sekolah", class: "Bintang" },
             { id: "IMN-0034", name: "Revanya Abigail Br Surbakti", age: 9, school: "2 SD", class: "Bintang" },
             { id: "IMN-0035", name: "Thiago Ginting", age: 5, school: "Belum Sekolah", class: "Bintang" },
-            { id: "IMN-0040", name: "Cristiano de Caprio", age: 13, school: "-", class: "Pra Remaja" },
-            { id: "IMN-0041", name: "Risky Tuahta Bangun", age: 15, school: "-", class: "Pra Remaja" },
-            { id: "IMN-0042", name: "Yonatan Ceristian Sitepu", age: 13, school: "-", class: "Pra Remaja" },
-            { id: "IMN-0043", name: "Calvien Aldiano Sagala", age: 12, school: "-", class: "Pra Remaja" },
-            { id: "IMN-0044", name: "Mario Ramah Suka Purba", age: 15, school: "-", class: "Pra Remaja" },
-            { id: "IMN-0045", name: "Rafael", age: 14, school: "-", class: "Pra Remaja" },
-            { id: "IMN-0046", name: "Griselda Fidelis Br Tarigan", age: 13, school: "-", class: "Pra Remaja" },
-            { id: "IMN-0047", name: "Mila Febriani Br Silalahi", age: 14, school: "-", class: "Pra Remaja" },
-            { id: "IMN-0048", name: "Nadine Izura Kinata Kembaren", age: 14, school: "-", class: "Pra Remaja" },
-            { id: "IMN-0049", name: "Nasya Ekklesia Mendrofa", age: 13, school: "-", class: "Pra Remaja" },
-            { id: "IMN-0050", name: "Nachelle Olivia Sitanggang", age: 13, school: "-", class: "Pra Remaja" },
-            { id: "IMN-0051", name: "Heppi Muliahati Silalahi", age: 13, school: "-", class: "Pra Remaja" }
+            // KELAS PRA REMAJA
+            { id: "IMN-0040", name: "Cristiano de Caprio", age: 13, school: "7 SMP", class: "Pra Remaja" },
+            { id: "IMN-0041", name: "Risky Tuahta Bangun", age: 15, school: "9 SMP", class: "Pra Remaja" },
+            { id: "IMN-0042", name: "Yonatan Ceristian Sitepu", age: 13, school: "7 SMP", class: "Pra Remaja" },
+            { id: "IMN-0043", name: "Calvien Aldiano Sagala", age: 12, school: "6 SD", class: "Pra Remaja" },
+            { id: "IMN-0044", name: "Mario Ramah Suka Purba", age: 15, school: "9 SMP", class: "Pra Remaja" },
+            { id: "IMN-0045", name: "Rafael", age: 14, school: "8 SMP", class: "Pra Remaja" },
+            { id: "IMN-0046", name: "Griselda Fidelis Br Tarigan", age: 13, school: "7 SMP", class: "Pra Remaja" },
+            { id: "IMN-0047", name: "Mila Febriani Br Silalahi", age: 14, school: "8 SMP", class: "Pra Remaja" },
+            { id: "IMN-0048", name: "Nadine Izura Kinata Kembaren", age: 14, school: "8 SMP", class: "Pra Remaja" },
+            { id: "IMN-0049", name: "Nasya Ekklesia Mendrofa", age: 13, school: "7 SMP", class: "Pra Remaja" },
+            { id: "IMN-0050", name: "Nachelle Olivia Sitanggang", age: 13, school: "7 SMP", class: "Pra Remaja" },
+            { id: "IMN-0051", name: "Heppi Muliahati Silalahi", age: 13, school: "7 SMP", class: "Pra Remaja" }
         ];
 
         let attendance = JSON.parse(localStorage.getItem('attendance_immanuel_v2')) || {};
@@ -277,7 +313,7 @@
                 document.getElementById('main-dashboard').classList.remove('hidden');
                 initApp();
             } else {
-                showToast("Login Gagal!", "bg-rose-600");
+                showToast("Username atau Password Salah!", "bg-rose-600");
             }
         });
 
@@ -311,23 +347,26 @@
                 card.innerHTML = `
                     <div class="flex flex-col gap-4">
                         <div class="flex items-center gap-4">
-                            <div class="relative">
-                                <img src="${photo}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-100">
-                                <button onclick="triggerPhoto('${s.id}')" class="absolute -bottom-1 -right-1 bg-white p-1 rounded-full shadow-md text-indigo-600 hover:scale-110">
+                            <div class="relative group">
+                                <img src="${photo}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-100 transition-all group-hover:brightness-75">
+                                <button onclick="triggerPhoto('${s.id}')" class="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-full shadow-lg text-indigo-600 hover:scale-110 active:scale-90 border border-slate-100">
                                     <i data-lucide="camera" class="w-3.5 h-3.5"></i>
                                 </button>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <h4 class="font-bold text-slate-900 truncate">${s.name}</h4>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase">${s.id} • ${s.class}</p>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${s.id} • ${s.class}</p>
+                                <p class="text-[10px] font-medium text-indigo-500 mt-0.5">${s.school} | ${s.age} Thn</p>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
-                            <button onclick="handleAbsen('${s.id}')" ${isHadir ? 'disabled' : ''} class="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${isHadir ? 'bg-emerald-500 text-white shadow-lg' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white'}">
+                            <button onclick="handleAbsen('${s.id}')" ${isHadir ? 'disabled' : ''} class="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${isHadir ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100 cursor-default' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white'}">
                                 <i data-lucide="${isHadir ? 'check-circle' : 'plus-circle'}" class="w-4 h-4"></i>
                                 ${isHadir ? 'Hadir' : 'Absen'}
                             </button>
-                            <button onclick="generateIDCard('${s.id}')" class="py-2.5 rounded-xl text-xs font-bold bg-slate-50 text-slate-600 border border-slate-200">KIA</button>
+                            <button onclick="generateIDCard('${s.id}')" class="py-2.5 rounded-xl text-xs font-bold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors flex items-center justify-center gap-1">
+                                <i data-lucide="printer" class="w-3.5 h-3.5"></i> KIA
+                            </button>
                         </div>
                     </div>
                 `;
@@ -344,7 +383,7 @@
                 localStorage.setItem('attendance_immanuel_v2', JSON.stringify(attendance));
                 renderStudents();
                 updateStats();
-                showToast(`Absensi dicatat: ${id}`, "bg-emerald-600");
+                showToast(`Absensi dicatat untuk ${id}`, "bg-emerald-600");
                 
                 if ('speechSynthesis' in window) {
                     const student = STUDENTS.find(x => x.id === id);
@@ -380,7 +419,7 @@
                 studentPhotos[targetPhotoId] = event.target.result;
                 localStorage.setItem('student_photos_immanuel', JSON.stringify(studentPhotos));
                 renderStudents();
-                showToast("Foto diperbarui", "bg-emerald-500");
+                showToast("Foto murid berhasil diperbarui", "bg-indigo-500");
             };
             reader.readAsDataURL(file);
         }
@@ -417,67 +456,119 @@
             const s = STUDENTS.find(x => x.id === id);
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 54] });
-            
+            drawKIA(doc, s);
+            doc.save(`KIA-${s.id}-${s.name}.pdf`);
+        }
+
+        function drawKIA(doc, s) {
+            // Background Indigo
             doc.setFillColor(79, 70, 229);
             doc.rect(0, 0, 85.6, 54, 'F');
+            
+            // Header
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(10);
-            doc.text("GPdI IMMANUEL", 42.8, 8, { align: 'center' });
+            doc.setFont("helvetica", "bold");
+            doc.text("GPdI IMMANUEL PEMATANGSIANTAR", 42.8, 8, { align: 'center' });
+            doc.setFontSize(6);
+            doc.text("KARTU IDENTITAS ANAK SEKOLAH MINGGU", 42.8, 12, { align: 'center' });
             
+            // Content Card
             doc.setFillColor(255, 255, 255);
-            doc.roundedRect(5, 15, 75.6, 34, 3, 3, 'F');
+            doc.roundedRect(5, 16, 75.6, 33, 3, 3, 'F');
             
+            // Photo
             const imgData = studentPhotos[s.id];
-            if(imgData) doc.addImage(imgData, 'JPEG', 10, 18, 20, 25);
+            if(imgData) {
+                try {
+                    doc.addImage(imgData, 'JPEG', 8, 19, 21, 27);
+                } catch (e) {
+                    doc.setDrawColor(200); doc.rect(8, 19, 21, 27);
+                }
+            } else {
+                doc.setDrawColor(220); doc.rect(8, 19, 21, 27);
+                doc.setTextColor(200); doc.setFontSize(6);
+                doc.text("Tanpa Foto", 18.5, 33, { align: 'center' });
+            }
             
+            // Info
             doc.setTextColor(30, 30, 30);
-            doc.setFontSize(8);
-            doc.text(s.name.toUpperCase(), 35, 24);
-            doc.text(`ID: ${s.id}`, 35, 30);
-            doc.text(`KELAS: ${s.class}`, 35, 34);
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.text(s.name.toUpperCase().substring(0, 24), 32, 23);
             
-            doc.save(`KIA-${s.id}.pdf`);
+            doc.setFontSize(7);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(100);
+            doc.text(`ID Murid`, 32, 28);
+            doc.setTextColor(50);
+            doc.text(`: ${s.id}`, 48, 28);
+            
+            doc.setTextColor(100);
+            doc.text(`Kategori`, 32, 32);
+            doc.setTextColor(50);
+            doc.text(`: ${s.class}`, 48, 32);
+            
+            doc.setTextColor(100);
+            doc.text(`Pendidikan`, 32, 36);
+            doc.setTextColor(50);
+            doc.text(`: ${s.school}`, 48, 36);
+            
+            doc.setTextColor(100);
+            doc.text(`Usia`, 32, 40);
+            doc.setTextColor(50);
+            doc.text(`: ${s.age} Tahun`, 48, 40);
+
+            doc.setFontSize(5);
+            doc.setTextColor(150);
+            doc.text("Immanuel Attendance System © 2026", 42.8, 46, { align: 'center' });
         }
 
         function downloadPDF(cls) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            const teacher = document.getElementById('teacher-name').value || 'Guru';
+            const teacher = document.getElementById('teacher-name').value || 'Guru Pembimbing';
             const todayISO = new Date().toISOString().split('T')[0];
+            const dataList = (cls === 'Semua') ? STUDENTS : STUDENTS.filter(s => s.class === cls);
 
-            let dataList = (cls === 'Semua') ? STUDENTS : STUDENTS.filter(s => s.class === cls);
+            doc.setFontSize(16);
+            doc.text("LAPORAN ABSENSI SEKOLAH MINGGU", 105, 20, { align: 'center' });
+            doc.setFontSize(10);
+            doc.text(`Kelas: ${cls} | Guru: ${teacher}`, 20, 35);
 
-            doc.text("LAPORAN ABSENSI", 105, 20, { align: 'center' });
             doc.autoTable({
-                startY: 40,
-                head: [['No', 'ID', 'Nama', 'Kelas', 'Status']],
-                body: dataList.map((s, i) => [i+1, s.id, s.name, s.class, (attendance[s.id]||[]).includes(todayISO) ? 'HADIR' : '-'])
+                startY: 45,
+                head: [['No', 'ID', 'Nama Murid', 'Usia', 'Sekolah', 'Status']],
+                body: dataList.map((s, i) => [
+                    i+1, s.id, s.name, s.age, s.school, 
+                    (attendance[s.id]||[]).includes(todayISO) ? 'HADIR' : '-'
+                ]),
+                theme: 'striped',
+                headStyles: { fillColor: [79, 70, 229] }
             });
-            doc.save(`Absen-${cls}.pdf`);
+            doc.save(`Absensi-${cls}.pdf`);
         }
 
         function downloadBatchKIA(cls) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 54] });
-            let dataList = (cls === 'Semua') ? STUDENTS : STUDENTS.filter(s => s.class === cls);
-
+            const dataList = (cls === 'Semua') ? STUDENTS : STUDENTS.filter(s => s.class === cls);
+            
+            showToast(`Menyiapkan ${dataList.length} Kartu...`, "bg-amber-600");
             dataList.forEach((s, i) => {
                 if (i > 0) doc.addPage([85.6, 54], 'landscape');
-                doc.setFillColor(79, 70, 229); doc.rect(0, 0, 85.6, 54, 'F');
-                doc.setFillColor(255, 255, 255); doc.roundedRect(5, 15, 75.6, 34, 3, 3, 'F');
-                doc.setTextColor(255, 255, 255); doc.text("GPdI IMMANUEL", 42.8, 8, { align: 'center' });
-                doc.setTextColor(30, 30, 30); doc.text(s.name.toUpperCase().substring(0, 25), 32, 24);
-                doc.setFontSize(6); doc.text(`ID: ${s.id} | ${s.class}`, 32, 30);
+                drawKIA(doc, s);
             });
-            doc.save(`KIA-Batch-${cls}.pdf`);
+            doc.save(`Batch-KIA-${cls}.pdf`);
         }
 
         function logout() { window.location.reload(); }
+        
         function submitManual() {
             const val = document.getElementById('manual-input').value.toUpperCase();
             const s = STUDENTS.find(x => x.id === val);
             if(s) { handleAbsen(s.id); toggleModal('manual'); }
-            else showToast("ID Tidak Ditemukan", "bg-rose-500");
+            else { showToast("ID Murid tidak ditemukan!", "bg-rose-500"); }
         }
     </script>
 </body>
