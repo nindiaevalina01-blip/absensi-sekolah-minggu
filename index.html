@@ -19,6 +19,7 @@
             0% { transform: scale(0); opacity: 1; }
             100% { transform: scale(1); opacity: 1; }
         }
+        .card-glow:hover { box-shadow: 0 0 20px rgba(99, 102, 241, 0.15); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen">
@@ -39,7 +40,7 @@
             <form id="login-form" class="p-8 space-y-6">
                 <div class="space-y-2">
                     <label class="text-sm font-semibold text-slate-700 ml-1">Username</label>
-                    <input type="text" id="username" placeholder="" required
+                    <input type="text" id="username" placeholder="Masukkan Username" required
                         class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
                 </div>
                 <div class="space-y-2">
@@ -111,7 +112,7 @@
                     <div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden">
                         <div id="stat-bar" class="bg-indigo-500 h-full transition-all duration-1000" style="width: 0%"></div>
                     </div>
-                    <p class="mt-4 text-[11px] text-slate-400 font-medium italic">Data digabungkan dengan riwayat permanen.</p>
+                    <p class="mt-4 text-[11px] text-slate-400 font-medium italic">Sinkronisasi data otomatis ke penyimpanan lokal.</p>
                 </div>
 
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col justify-center">
@@ -135,12 +136,10 @@
                 </div>
             </div>
 
-            <!-- Grid Murid -->
             <div id="student-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
         </main>
     </div>
 
-    <!-- Modal Laporan -->
     <div id="modal-report" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
         <div class="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl scale-in-center">
             <div class="flex justify-between items-center mb-6">
@@ -169,7 +168,6 @@
         </div>
     </div>
 
-    <!-- Modal KIA Massal -->
     <div id="modal-kia-massal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
         <div class="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl scale-in-center">
             <div class="flex justify-between items-center mb-6">
@@ -196,7 +194,6 @@
         </div>
     </div>
 
-    <!-- Modal Input Manual -->
     <div id="modal-manual" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
         <div class="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl scale-in-center">
             <div class="flex justify-between items-center mb-6">
@@ -296,22 +293,44 @@
         let searchQuery = '';
         let targetPhotoId = null;
 
-        
-        // Menggabungkan absensi dari kode (permanen) dan dari localStorage (dinamis)
+        // Fungsi untuk mengubah URL/Base64 menjadi Image Object yang bisa dibaca jsPDF
+        function getImgData(url) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = url;
+            });
+        }
+
         function getCombinedAttendance(id) {
             const student = STUDENTS.find(s => s.id === id);
             const hardcodedHistory = student && student.history ? student.history : [];
             const localHistory = attendance[id] || [];
-            
-            // Menggabungkan dan menghilangkan duplikat tanggal
-            const combined = [...new Set([...hardcodedHistory, ...localHistory])];
-            return combined;
+            return [...new Set([...hardcodedHistory, ...localHistory])];
         }
 
         function getStudentPhoto(s) {
             if (studentPhotos[s.id]) return studentPhotos[s.id];
-            if (s.photo) return `https://lh3.googleusercontent.com/d/${s.photo}`;
+            if (s.photo && s.photo.length > 10) return `https://lh3.googleusercontent.com/d/${s.photo.trim()}`;
             return `https://placehold.co/150x150/6366f1/ffffff?text=${s.name.charAt(0)}`;
+        }
+
+        function showToast(msg, color = "bg-indigo-600") {
+            const t = document.getElementById('toast');
+            t.className = `fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] px-8 py-4 rounded-2xl text-white shadow-2xl font-bold transition-all ${color}`;
+            t.innerText = msg;
+            t.classList.remove('hidden', 'opacity-0');
+            setTimeout(() => {
+                t.classList.add('opacity-0');
+                setTimeout(() => t.classList.add('hidden'), 500);
+            }, 3000);
+        }
+
+        function toggleModal(id) {
+            const m = document.getElementById(`modal-${id}`);
+            m.classList.toggle('hidden');
         }
 
         document.getElementById('login-form').addEventListener('submit', function(e) {
@@ -336,6 +355,36 @@
             renderStudents();
         }
 
+        function updateStats() {
+            const today = new Date().toISOString().split('T')[0];
+            const present = STUDENTS.filter(s => getCombinedAttendance(s.id).includes(today)).length;
+            const total = STUDENTS.length;
+            const percent = Math.round((present / total) * 100) || 0;
+
+            document.getElementById('stat-present').innerText = present;
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-percent').innerText = `${percent}%`;
+            document.getElementById('stat-bar').style.width = `${percent}%`;
+        }
+
+        function filterClass(cls) {
+            currentClass = cls;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-lg');
+                btn.classList.add('text-slate-500');
+                if(btn.innerText === cls) {
+                    btn.classList.add('bg-indigo-600', 'text-white', 'shadow-lg');
+                    btn.classList.remove('text-slate-500');
+                }
+            });
+            renderStudents();
+        }
+
+        function handleSearch() {
+            searchQuery = document.getElementById('search-input').value;
+            renderStudents();
+        }
+
         function renderStudents() {
             const grid = document.getElementById('student-grid');
             const today = new Date().toISOString().split('T')[0];
@@ -350,39 +399,36 @@
             filtered.forEach(s => {
                 const allDates = getCombinedAttendance(s.id);
                 const isHadir = allDates.includes(today);
-                const totalHadir = allDates.length;
                 const photo = getStudentPhoto(s);
                 
                 const card = document.createElement('div');
-                card.className = `bg-white rounded-[2rem] border-2 transition-all p-5 shadow-sm hover:shadow-md ${isHadir ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-100'}`;
+                card.className = `card-glow bg-white rounded-[2rem] border-2 transition-all p-5 shadow-sm ${isHadir ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-100'}`;
                 
                 card.innerHTML = `
                     <div class="flex flex-col gap-4">
                         <div class="flex items-center gap-4">
                             <div class="relative group">
-                                <img src="${photo}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-100 transition-all group-hover:brightness-75">
-                                <button onclick="triggerPhoto('${s.id}')" class="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-full shadow-lg text-indigo-600 hover:scale-110 active:scale-90 border border-slate-100">
-                                    <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                                <img src="${photo}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-100 bg-slate-100 transition-all group-hover:brightness-75">
+                                <button onclick="triggerPhoto('${s.id}')" class="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-full shadow-lg text-indigo-600 hover:scale-110 border border-slate-100">
+                                    <i data-lucide="camera" class="w-3 h-3"></i>
                                 </button>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h4 class="font-bold text-slate-900 truncate">${s.name}</h4>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${s.id} • ${s.class}</p>
-                                <p class="text-[11px] text-indigo-600 font-semibold mt-0.5">${s.age} Tahun • ${s.school}</p>
-                                <div class="flex items-center gap-2 mt-1">
-                                    <span class="bg-indigo-100 text-indigo-700 text-[9px] px-2 py-0.5 rounded-full font-black">
-                                        TOTAL HADIR: ${totalHadir}
-                                    </span>
-                                </div>
+                                <h4 class="font-bold text-slate-900 truncate leading-tight">${s.name}</h4>
+                                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">${s.id} • ${s.class}</p>
+                                <p class="text-[11px] text-indigo-600 font-semibold mt-0.5">${s.age} Thn • ${s.school}</p>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
-                            <button onclick="handleAbsen('${s.id}')" ${isHadir ? 'disabled' : ''} class="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${isHadir ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100 cursor-default' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white'}">
-                                <i data-lucide="${isHadir ? 'check-circle' : 'plus-circle'}" class="w-4 h-4"></i>
-                                ${isHadir ? 'Hadir' : 'Absen'}
+                            <button onclick="handleAbsen('${s.id}')" ${isHadir ? 'disabled' : ''} 
+                                class="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all 
+                                ${isHadir ? 'bg-emerald-100 text-emerald-700 cursor-default' : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 shadow-md shadow-indigo-100'}">
+                                <i data-lucide="${isHadir ? 'check-circle' : 'fingerprint'}" class="w-4 h-4"></i>
+                                ${isHadir ? 'Sudah Hadir' : 'Absen'}
                             </button>
-                            <button onclick="generateIDCard('${s.id}')" class="py-2.5 rounded-xl text-xs font-bold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors flex items-center justify-center gap-1">
-                                <i data-lucide="printer" class="w-3.5 h-3.5"></i> KIA
+                            <button onclick="downloadKIA('${s.id}')" 
+                                class="py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all flex items-center justify-center gap-1.5">
+                                <i data-lucide="contact-2" class="w-4 h-4"></i> KIA
                             </button>
                         </div>
                     </div>
@@ -394,41 +440,26 @@
 
         function handleAbsen(id) {
             const today = new Date().toISOString().split('T')[0];
-            if (!attendance[id]) attendance[id] = [];
-            
-            const currentAttendance = getCombinedAttendance(id);
-            
-            if (!currentAttendance.includes(today)) {
+            if(!attendance[id]) attendance[id] = [];
+            if(!attendance[id].includes(today)) {
                 attendance[id].push(today);
                 localStorage.setItem('attendance_immanuel_v2', JSON.stringify(attendance));
-                renderStudents();
+                showToast("Berhasil Absen!", "bg-emerald-600");
                 updateStats();
-                showToast(`Absensi dicatat untuk ${id}`, "bg-emerald-600");
-                
-                if ('speechSynthesis' in window) {
-                    const student = STUDENTS.find(x => x.id === id);
-                    const msg = new SpeechSynthesisUtterance(`Selamat datang ${student.name}`);
-                    msg.lang = 'id-ID';
-                    window.speechSynthesis.speak(msg);
-                }
+                renderStudents();
             }
         }
 
-        function updateStats() {
-            const today = new Date().toISOString().split('T')[0];
-            let present = 0;
-            
-            STUDENTS.forEach(s => {
-                if (getCombinedAttendance(s.id).includes(today)) present++;
-            });
-
-            const total = STUDENTS.length;
-            const percent = Math.round((present / total) * 100) || 0;
-
-            document.getElementById('stat-present').innerText = present;
-            document.getElementById('stat-total').innerText = total;
-            document.getElementById('stat-percent').innerText = percent + '%';
-            document.getElementById('stat-bar').style.width = percent + '%';
+        function submitManual() {
+            const input = document.getElementById('manual-input').value.toUpperCase().trim();
+            const student = STUDENTS.find(s => s.id === input);
+            if(student) {
+                handleAbsen(student.id);
+                toggleModal('manual');
+                document.getElementById('manual-input').value = '';
+            } else {
+                showToast("ID Murid tidak ditemukan!", "bg-rose-600");
+            }
         }
 
         function triggerPhoto(id) {
@@ -436,214 +467,135 @@
             document.getElementById('photo-upload').click();
         }
 
-        function handlePhotoFile(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+        function handlePhotoFile(event) {
+            const file = event.target.files[0];
+            if(!file) return;
             const reader = new FileReader();
-            reader.onload = (event) => {
-                studentPhotos[targetPhotoId] = event.target.result;
+            reader.onload = function(e) {
+                studentPhotos[targetPhotoId] = e.target.result;
                 localStorage.setItem('student_photos_immanuel', JSON.stringify(studentPhotos));
+                showToast("Foto Profil Diperbarui!");
                 renderStudents();
-                showToast("Foto murid berhasil diperbarui", "bg-indigo-500");
             };
             reader.readAsDataURL(file);
         }
 
-        function toggleModal(id) {
-            document.getElementById(`modal-${id}`).classList.toggle('hidden');
-        }
-
-        function filterClass(cls) {
-            currentClass = cls;
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.className = "tab-btn px-6 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap text-slate-500";
-                if(btn.innerText === cls) {
-                    btn.className = "tab-btn active px-6 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap bg-indigo-600 text-white shadow-lg";
-                }
-            });
-            renderStudents();
-        }
-
-        function handleSearch() {
-            searchQuery = document.getElementById('search-input').value;
-            renderStudents();
-        }
-
-        function showToast(msg, color) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.className = `fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] px-8 py-4 rounded-2xl text-white shadow-2xl font-bold transition-all ${color}`;
-            t.classList.remove('hidden');
-            setTimeout(() => t.classList.add('hidden'), 3000);
-        }
-
-        function generateIDCard(id) {
-            const s = STUDENTS.find(x => x.id === id);
-            const { jsPDF } = window.jspdf;
+        async function createKIAPage(doc, student, x, y) {
+            // Background Card (Warna Putih bersih)
+            doc.setDrawColor(200, 200, 200);
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(x, y, 85, 54, 3, 3, 'FD');
             
-            const img = new Image();
-            img.crossOrigin = "Anonymous";
-            img.src = getStudentPhoto(s);
-            
-            img.onload = function() {
-                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 54] });
-                drawKIA(doc, s, img);
-                doc.save(`KIA-${s.id}-${s.name}.pdf`);
-            };
-
-            img.onerror = function() {
-                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 54] });
-                drawKIA(doc, s, null);
-                doc.save(`KIA-${s.id}-${s.name}.pdf`);
-            };
-        }
-
-        function drawKIA(doc, s, loadedImg = null) {
+            // Header (Warna Indigo)
             doc.setFillColor(79, 70, 229);
-            doc.rect(0, 0, 85.6, 54, 'F');
+            doc.roundedRect(x, y, 85, 12, 3, 3, 'F');
+            doc.rect(x, y + 9, 85, 3, 'F'); 
             
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
-            doc.text("GPdI IMMANUEL BERASTAGI", 42.8, 8, { align: 'center' });
+            doc.text("KARTU IDENTITAS ANAK", x + 42.5, y + 5, { align: 'center' });
             doc.setFontSize(6);
-            doc.text("KARTU IDENTITAS ANAK SEKOLAH MINGGU", 42.8, 12, { align: 'center' });
+            doc.text("GPdI Immanuel Berastagi", x + 42.5, y + 9, { align: 'center' });
+
+            // Profile Photo (Memproses gambar asinkron)
+            const photoUrl = getStudentPhoto(student);
+            const img = await getImgData(photoUrl);
             
-            doc.setFillColor(255, 255, 255);
-            doc.roundedRect(5, 16, 75.6, 33, 3, 3, 'F');
-            
-            if(loadedImg) {
-                try { doc.addImage(loadedImg, 'JPEG', 8, 19, 21, 27); } catch (e) { doc.setDrawColor(200); doc.rect(8, 19, 21, 27); }
+            if (img) {
+                // Gambar berhasil dimuat
+                doc.addImage(img, 'JPEG', x + 5, y + 17, 20, 25);
+                doc.setDrawColor(79, 70, 229);
+                doc.setLineWidth(0.3);
+                doc.rect(x + 5, y + 17, 20, 25); // Border foto
             } else {
-                doc.setDrawColor(220); doc.rect(8, 19, 21, 27);
-                doc.setTextColor(200); doc.setFontSize(6);
-                doc.text("Tanpa Foto", 18.5, 33, { align: 'center' });
+                // Placeholder jika gambar gagal
+                doc.setFillColor(241, 245, 249);
+                doc.rect(x + 5, y + 17, 20, 25, 'F');
+                doc.setTextColor(150, 150, 150);
+                doc.setFontSize(8);
+                doc.text("No Photo", x + 15, y + 30, { align: 'center' });
             }
-            
-            doc.setTextColor(30, 30, 30);
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "bold");
-            doc.text(s.name.toUpperCase().substring(0, 24), 32, 23);
-            
+
+            // Details
+            doc.setTextColor(30, 41, 59);
             doc.setFontSize(7);
             doc.setFont("helvetica", "normal");
-            doc.setTextColor(100);
-            doc.text(`ID Murid`, 32, 28);
-            doc.setTextColor(50);
-            doc.text(`: ${s.id}`, 48, 28);
-            
-            doc.setTextColor(100);
-            doc.text(`Usia`, 32, 32);
-            doc.setTextColor(50);
-            doc.text(`: ${s.age} Tahun`, 48, 32);
-            
-            doc.setTextColor(100);
-            doc.text(`Pendidikan`, 32, 36);
-            doc.setTextColor(50);
-            doc.text(`: ${s.school}`, 48, 36);
+            doc.text("ID", x + 30, y + 22);
+            doc.text("NAMA", x + 30, y + 28);
+            doc.text("KELAS", x + 30, y + 34);
+            doc.text("SEKOLAH", x + 30, y + 40);
 
-            doc.setTextColor(100);
-            doc.text(`Total Hadir`, 32, 40);
-            doc.setTextColor(50);
-            doc.text(`: ${getCombinedAttendance(s.id).length} Kali`, 48, 40);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8);
+            doc.text(`: ${student.id}`, x + 45, y + 22);
+            
+            // Limit nama panjang agar tidak overflow
+            let displayName = student.name;
+            if(displayName.length > 22) displayName = displayName.substring(0, 20) + "...";
+            doc.text(`: ${displayName}`, x + 45, y + 28);
+            
+            doc.text(`: ${student.class}`, x + 45, y + 34);
+            doc.text(`: ${student.school}`, x + 45, y + 40);
 
+            // Footer / Garis Dekorasi
+            doc.setFillColor(79, 70, 229);
+            doc.rect(x + 5, y + 48, 75, 0.5, 'F');
             doc.setFontSize(5);
-            doc.setTextColor(150);
-            doc.text("Berastagi, Karo - Sumatera Utara", 42.8, 46, { align: 'center' });
-        }
-
-        function downloadPDF(cls) {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const teacher = document.getElementById('teacher-name').value || '(________________)';
-            const todayISO = new Date().toISOString().split('T')[0];
-            const todayStr = new Date().toLocaleDateString('id-ID', { 
-                day: 'numeric', 
-                month: 'long', 
-                year: 'numeric' 
-            });
-            const dataList = (cls === 'Semua') ? STUDENTS : STUDENTS.filter(s => s.class === cls);
-
-            // Judul Utama
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(16);
-            doc.text("LAPORAN KEHADIRAN SEKOLAH MINGGU", 105, 20, { align: 'center' });
-            
-            // Sub-header (Nama Gereja & Kelas)
-            doc.setFontSize(14);
-            doc.text("GPdI Immanuel Berastagi", 105, 28, { align: 'center' });
-            doc.setFontSize(12);
             doc.setFont("helvetica", "italic");
-            doc.text(`Kelas: ${cls === 'Semua' ? 'Seluruh Kelas' : cls}`, 105, 35, { align: 'center' });
-            
-            // Tanggal Cetak
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-            doc.text(`Tanggal Cetak: ${todayStr}`, 14, 45);
-
-            doc.autoTable({
-                startY: 50,
-                head: [['No', 'ID', 'Nama Murid', 'Usia', 'Total Hadir', 'Status Hari Ini']],
-                body: dataList.map((s, i) => [
-                    i+1, 
-                    s.id, 
-                    s.name, 
-                    s.age + ' Thn', 
-                    getCombinedAttendance(s.id).length + ' Kali',
-                    getCombinedAttendance(s.id).includes(todayISO) ? 'HADIR' : '-'
-                ]),
-                theme: 'striped',
-                headStyles: { fillColor: [79, 70, 229], halign: 'center' },
-                columnStyles: {
-                    0: { halign: 'center' },
-                    1: { halign: 'center' },
-                    3: { halign: 'center' },
-                    4: { halign: 'center' },
-                    5: { halign: 'center', fontStyle: 'bold' }
-                }
-            });
-
-            // Menentukan posisi Y setelah tabel selesai
-            const finalY = doc.lastAutoTable.finalY + 20;
-            const rightColumnX = 140;
-
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(11);
-            doc.text("Mengetahui,", rightColumnX, finalY);
-            doc.text("Guru Sekolah Minggu,", rightColumnX, finalY + 7);
-            
-            // Nama Guru (Inputan)
-            doc.setFont("helvetica", "bold");
-            doc.text(teacher, rightColumnX, finalY + 30);
-            
-            // Garis bawah untuk nama guru
-            const textWidth = doc.getTextWidth(teacher);
-            doc.line(rightColumnX, finalY + 31, rightColumnX + textWidth, finalY + 31);
-
-            doc.save(`Laporan_Absensi_${cls}_${todayISO}.pdf`);
+            doc.setTextColor(100, 100, 100);
+            doc.text("Bawa kartu ini setiap ibadah untuk absensi.", x + 42.5, y + 51, { align: 'center' });
         }
 
-        function downloadBatchKIA(cls) {
+        async function downloadKIA(id) {
+            showToast("Menyiapkan KIA...", "bg-indigo-500");
+            const student = STUDENTS.find(s => s.id === id);
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 54] });
-            const dataList = (cls === 'Semua') ? STUDENTS : STUDENTS.filter(s => s.class === cls);
-            
-            showToast(`Menyiapkan ${dataList.length} Kartu...`, "bg-amber-600");
-            dataList.forEach((s, i) => {
-                if (i > 0) doc.addPage([85.6, 54], 'landscape');
-                drawKIA(doc, s);
-            });
-            doc.save(`Batch-KIA-${cls}.pdf`);
+            const doc = new jsPDF('landscape', 'mm', [85, 54]);
+            await createKIAPage(doc, student, 0, 0);
+            doc.save(`KIA_${student.name}.pdf`);
         }
 
-        function logout() { window.location.reload(); }
-        
-        function submitManual() {
-            const val = document.getElementById('manual-input').value.toUpperCase();
-            const s = STUDENTS.find(x => x.id === val);
-            if(s) { handleAbsen(s.id); toggleModal('manual'); }
-            else { showToast("ID Murid tidak ditemukan!", "bg-rose-500"); }
+        async function downloadBatchKIA(cls) {
+            showToast("Sedang memproses banyak foto, mohon tunggu...", "bg-indigo-600");
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4'); // Format A4 Portrait
+            const filtered = STUDENTS.filter(s => cls === 'Semua' || s.class === cls);
+            
+            // Margin dan Ukuran
+            const marginX = 15;
+            const marginY = 15;
+            const cardW = 85;
+            const cardH = 54;
+            const gapX = 10;
+            const gapY = 10;
+
+            for(let i=0; i < filtered.length; i++) {
+                // Hitung posisi (2 kolom, 4 baris = 8 kartu per lembar)
+                const pageIndex = i % 8;
+                const col = pageIndex % 2;
+                const row = Math.floor(pageIndex / 2);
+
+                if (i > 0 && pageIndex === 0) {
+                    doc.addPage();
+                }
+
+                const x = marginX + (col * (cardW + gapX));
+                const y = marginY + (row * (cardH + gapY));
+
+                await createKIAPage(doc, filtered[i], x, y);
+            }
+            
+            doc.save(`KIA_Batch_${cls}_${new Date().getTime()}.pdf`);
+            showToast("Berhasil mengunduh KIA!", "bg-emerald-600");
         }
+
+        function logout() {
+            location.reload();
+        }
+
+        // Initialize Lucide on load
+        window.onload = () => lucide.createIcons();
     </script>
 </body>
 </html>
